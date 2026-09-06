@@ -21,7 +21,7 @@ const getOne = async (req, res, next) => {
     
     // Aggregate inventory
     const [inventory] = await pool.query(
-      'SELECT blood_group, COUNT(*) as count FROM blood_unit WHERE bank_id = ? AND status = "Available" GROUP BY blood_group',
+      "SELECT blood_group, COUNT(*) as count FROM blood_unit WHERE bank_id = ? AND status = 'Available' GROUP BY blood_group",
       [req.params.id]
     );
     
@@ -34,7 +34,7 @@ const getStats = async (req, res, next) => {
   try {
     const id = req.params.id;
     const [[staffCount]]   = await pool.query('SELECT COUNT(*) AS count FROM staff WHERE bank_id = ?', [id]);
-    const [[unitCount]]    = await pool.query('SELECT COUNT(*) AS count FROM blood_unit WHERE bank_id = ? AND status="Available"', [id]);
+    const [[unitCount]]    = await pool.query("SELECT COUNT(*) AS count FROM blood_unit WHERE bank_id = ? AND status='Available'", [id]);
     const [[eventCount]]   = await pool.query('SELECT COUNT(*) AS count FROM donation_event WHERE bank_id = ?', [id]);
     const [[requestCount]] = await pool.query('SELECT COUNT(*) AS count FROM blood_request WHERE bank_id = ?', [id]);
     res.json({

@@ -6,11 +6,11 @@ const getSummary = async (req, res, next) => {
     const [[banks]]    = await pool.query('SELECT COUNT(*) AS count FROM blood_bank');
     const [[donors]]   = await pool.query('SELECT COUNT(*) AS count FROM donor WHERE is_eligible=1');
     const [[receivers]]= await pool.query('SELECT COUNT(*) AS count FROM receiver');
-    const [[units]]    = await pool.query('SELECT COUNT(*) AS count FROM blood_unit WHERE status="Available"');
-    const [[pending]]  = await pool.query('SELECT COUNT(*) AS count FROM blood_request WHERE status="Pending"');
-    const [[critical]] = await pool.query('SELECT COUNT(*) AS count FROM blood_request WHERE urgency="Critical" AND status IN ("Pending","Approved")');
+    const [[units]]    = await pool.query("SELECT COUNT(*) AS count FROM blood_unit WHERE status='Available'");
+    const [[pending]]  = await pool.query("SELECT COUNT(*) AS count FROM blood_request WHERE status='Pending'");
+    const [[critical]] = await pool.query("SELECT COUNT(*) AS count FROM blood_request WHERE urgency='Critical' AND status IN ('Pending','Approved')");
     const [[events]]   = await pool.query('SELECT COUNT(*) AS count FROM donation_event');
-    const [[expired]]  = await pool.query('SELECT COUNT(*) AS count FROM blood_unit WHERE status="Expired"');
+    const [[expired]]  = await pool.query("SELECT COUNT(*) AS count FROM blood_unit WHERE status='Expired'");
 
     // Blood group inventory
     const [inventory] = await pool.query(`

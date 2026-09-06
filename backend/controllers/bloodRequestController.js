@@ -19,7 +19,7 @@ const getAll = async (req, res, next) => {
     if (urgency)     { conditions.push('br.urgency = ?');     params.push(urgency); }
     if (blood_group) { conditions.push('br.blood_group = ?'); params.push(blood_group); }
     if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ' ORDER BY FIELD(br.urgency,"Critical","Urgent","Normal"), br.request_date DESC';
+    sql += " ORDER BY FIELD(br.urgency,'Critical','Urgent','Normal'), br.request_date DESC";
     const [rows] = await pool.query(sql, params);
     res.json({ success: true, count: rows.length, data: rows });
   } catch (err) { next(err); }
