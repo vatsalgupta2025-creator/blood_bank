@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
+const fs = require('fs');
 
-const pool = mysql.createPool({
+const dbConfig = {
   host:     process.env.DB_HOST     || 'localhost',
   port:     process.env.DB_PORT     || 3306,
   database: process.env.DB_NAME     || 'blood_bank_db',
@@ -10,7 +11,16 @@ const pool = mysql.createPool({
   connectionLimit:    10,
   queueLimit:         0,
   timezone:           '+00:00',
-});
+};
+
+if (process.env.DB_SSL_CA) {
+  dbConfig.ssl = {
+    rejectUnauthorized: true,
+    ca: fs.readFileSync(process.env.DB_SSL_CA)
+  };
+}
+
+const pool = mysql.createPool(dbConfig);
 
 // Test connection on startup
 pool.getConnection()
