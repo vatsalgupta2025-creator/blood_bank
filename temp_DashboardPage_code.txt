@@ -1,0 +1,114 @@
+﻿Created At: 2026-09-05T22:31:30+05:30
+Completed At: 2026-09-05T22:31:30+05:30
+File Path: `file:///c:/Users/SAMSUNG/Desktop/DBMS%20PROJECT/frontend/src/pages/DashboardPage.jsx`
+Total Lines: 105
+Total Bytes: 5561
+Showing lines 1 to 105
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import { useState, useEffect } from 'react';
+2: import {
+3:   ClipboardList, Droplets, UserRound, Building2, AlertTriangle
+4: } from 'lucide-react';
+5: import { getDashboardSummary } from '../api';
+6: import { useNavigate } from 'react-router-dom';
+7: 
+8: export default function DashboardPage() {
+9:   const [data, setData]       = useState(null);
+10:   const [loading, setLoading] = useState(true);
+11:   const [error, setError]     = useState(null);
+12:   const navigate = useNavigate();
+13: 
+14:   useEffect(() => {
+15:     getDashboardSummary()
+16:       .then(res => setData(res.data))
+17:       .catch(err => setError(err.response?.data?.message || err.message))
+18:       .finally(() => setLoading(false));
+19:   }, []);
+20: 
+21:   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading dashboard...</div>;
+22:   if (error) return (
+23:     <div style={{ padding: 40, textAlign: 'center', color: 'var(--danger)' }}>
+24:       <AlertTriangle size={48} style={{ margin: '0 auto 16px' }} />
+25:       <h2>Error Loading Dashboard</h2>
+26:       <p>{error}</p>
+27:     </div>
+28:   );
+29:   if (!data) return null;
+30: 
+31:   return (
+32:     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+33:       
+34:       {/* Hero Section */}
+35:       <div className="hero-section">
+36:         <h1 className="hero-title" style={{ color: 'white' }}>Save a life, be a hero.</h1>
+37:         <p style={{ fontSize: '18px', opacity: 0.9, maxWidth: '500px', color: 'white' }}>
+38:           Your blood donation can make a difference and save up to three lives. 
+39:           Join us today and be a hero for someone in need.
+40:         </p>
+41:       </div>
+42: 
+43:       {/* Statistics Strip */}
+44:       <div className="stat-strip">
+45:         <div className="stat-strip-item">
+46:           <div className="stat-strip-value">{data.availableUnits}+</div>
+47:           <div className="stat-strip-label">Blood Units</div>
+48:         </div>
+49:         <div className="stat-strip-item">
+50:           <div className="stat-strip-value">{data.eligibleDonors}+</div>
+51:           <div className="stat-strip-label">Donors</div>
+52:         </div>
+53:         <div className="stat-strip-item">
+54:           <div className="stat-strip-value">{data.totalBanks}</div>
+55:           <div className="stat-strip-label">Blood Banks</div>
+56:         </div>
+57:         <div className="stat-strip-item">
+58:           <div className="stat-strip-value">{data.pendingRequests}</div>
+59:           <div className="stat-strip-label">Pending Requests</div>
+60:         </div>
+61:       </div>
+62: 
+63:       {/* Quick Action Grid */}
+64:       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+65:         <div 
+66:           onClick={() => navigate('/blood-requests')}
+67:           style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}>
+68:           <div style={{ background: 'var(--danger-bg)', width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+69:             <ClipboardList color="var(--crimson)" />
+70:           </div>
+71:           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-primary)' }}>View Requests</h3>
+72:           <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)' }}>Manage pending transfusions</p>
+73:         </div>
+74:         <div 
+75:           onClick={() => navigate('/blood-units')}
+76:           style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}>
+77:           <div style={{ background: 'var(--danger-bg)', width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+78:             <Droplets color="var(--crimson)" />
+79:           </div>
+80:           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-primary)' }}>Inventory</h3>
+81:           <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)' }}>Check blood stock</p>
+82:         </div>
+83:         <div 
+84:           onClick={() => navigate('/donors')}
+85:           style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}>
+86:           <div style={{ background: 'var(--danger-bg)', width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+87:             <UserRound color="var(--crimson)" />
+88:           </div>
+89:           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-primary)' }}>Donors</h3>
+90:           <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)' }}>Manage eligible donors</p>
+91:         </div>
+92:         <div 
+93:           onClick={() => navigate('/blood-banks')}
+94:           style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}>
+95:           <div style={{ background: 'var(--danger-bg)', width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+96:             <Building2 color="var(--crimson)" />
+97:           </div>
+98:           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-primary)' }}>Blood Banks</h3>
+99:           <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)' }}>Find donation centers</p>
+100:         </div>
+101:       </div>
+102:     </div>
+103:   );
+104: }
+105: 
+The above content shows the entire, complete file contents of the requested file.
+

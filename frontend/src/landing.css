@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  --color-blood: #8B0000;
+  --color-blood-light: #B22222;
+  --color-blood-bright: #DC143C;
+  --color-blood-muted: #6B0000;
+  --color-charcoal: #0F0F12;
+  --color-charcoal-2: #16161A;
+  --color-charcoal-3: #1E1E24;
+  --color-charcoal-4: #2A2A32;
+  --color-surface: #F9F6F3;
+  --color-surface-2: #F0ECE8;
+}
+
+/* Base styles scoped to landing page to avoid conflicting with Dashboard */
+.landing-page {
+  height: 100%;
+  font-family: var(--font-body);
+  background-color: #0F0F12;
+  color: #F9F6F3;
+}
+
+.landing-page * {
+  scrollbar-width: thin;
+  scrollbar-color: #8B0000 transparent;
+}
+
+.landing-page *::-webkit-scrollbar {
+  width: 4px;
+}
+
+.landing-page *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.landing-page *::-webkit-scrollbar-thumb {
+  background: #8B0000;
+  border-radius: 2px;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 0, 0, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(139, 0, 0, 0); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(1.03); }
+}
+
+@keyframes drip {
+  0% { transform: translateY(-6px); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateY(6px); opacity: 0; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s ease forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+.animate-heartbeat {
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.blood-glow {
+  box-shadow: 0 0 24px rgba(139, 0, 0, 0.35), 0 0 64px rgba(139, 0, 0, 0.12);
+}
+
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 24px rgba(139,0,0,0.15);
+}
