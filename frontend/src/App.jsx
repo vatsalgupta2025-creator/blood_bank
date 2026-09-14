@@ -11,7 +11,10 @@ import BloodRequestsPage  from './pages/BloodRequestsPage';
 import BloodTestsPage     from './pages/BloodTestsPage';
 import DonationEventsPage from './pages/DonationEventsPage';
 import StaffPage          from './pages/StaffPage';
+import SqlConsolePage     from './pages/SqlConsolePage';
+import DbVerificationPage  from './pages/DbVerificationPage';
 import LoadingScreen      from './components/LoadingScreen';
+
 import LoginPage          from './pages/LoginPage';
 import LandingPage        from './pages/LandingPage';
 import { setToken }       from './api';
@@ -133,7 +136,18 @@ export default function App() {
                 <StaffPage />
               </PageLayout>
             } />
+            <Route path="/sql-console" element={
+              <PageLayout title="SQL Console" subtitle="Admin SQL query terminal (SELECT queries only)">
+                <SqlConsolePage />
+              </PageLayout>
+            } />
+            <Route path="/db-verification" element={
+              <PageLayout title="Database Verification" subtitle="Verify live MySQL database records for CRUD operations">
+                <DbVerificationPage />
+              </PageLayout>
+            } />
           </Route>
+
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

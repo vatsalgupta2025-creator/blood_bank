@@ -92,4 +92,9 @@ export const createStaffMember   = (data)   => api.post('/staff', data);
 export const updateStaffMember   = (id, data) => api.put(`/staff/${id}`, data);
 export const deleteStaffMember   = (id)     => api.delete(`/staff/${id}`);
 
+// SQL Console & Database Verification
+export const executeSqlQuery     = (query)        => api.post('/sql/query', { query });
+export const verifyDbRecord      = (entity, id)   => api.get(`/db-verification/${entity}/${id}`);
+
 export default api;
+

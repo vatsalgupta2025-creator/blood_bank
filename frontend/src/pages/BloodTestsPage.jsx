@@ -4,6 +4,7 @@ import { getBloodTests, createBloodTest, updateBloodTest, deleteBloodTest, getDo
 import { useToast } from '../context/ToastContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import ColumnSelector from '../components/ColumnSelector';
 import { StatusBadge, BloodGroupBadge, formatDate } from '../components/Badges';
 
 const TEST_TYPES = ['HIV','Hepatitis B','Hepatitis C','Syphilis','Malaria','Blood Group Confirm'];
@@ -22,6 +23,9 @@ export default function BloodTestsPage() {
   const [modal,     setModal]     = useState({ open:false, mode:'add', data:EMPTY });
   const [saving,    setSaving]    = useState(false);
   const [confirm,   setConfirm]   = useState(null);
+
+  const DEFAULT_COLS = new Set(['test_id','donor_name','blood_group','test_type','tested_date','result']);
+  const [visibleKeys, setVisibleKeys] = useState(DEFAULT_COLS);
 
   const loadTests = (params = {}) => {
     setLoading(true);
@@ -76,7 +80,7 @@ export default function BloodTestsPage() {
 
   const f=modal.data; const set=(k,v)=>setModal(m=>({...m,data:{...m.data,[k]:v}}));
 
-  const columns=[
+  const ALL_COLUMNS = [
     {key:'test_id',    label:'#',        render:v=><span className="font-mono text-xs text-muted">#{v}</span>},
     {key:'donor_name', label:'Donor',    sortable:true,render:v=><strong>{v}</strong>},
     {key:'blood_group',label:'Blood',    render:v=><BloodGroupBadge group={v}/>},
@@ -85,13 +89,15 @@ export default function BloodTestsPage() {
     {key:'result',     label:'Result',   sortable:true,render:v=><StatusBadge status={v}/>},
     {key:'tester_name',label:'Tested By'},
     {key:'remarks',    label:'Remarks',  render:v=><span className="text-sm text-muted truncate" style={{maxWidth:160}}>{v||'—'}</span>},
-    {key:'test_id',    label:'Actions',  render:(_,row)=>(
+    {key:'actions',    label:'Actions',  alwaysVisible:true, render:(_,row)=>(
       <div className="flex gap-2">
         <button className="btn btn-ghost btn-sm btn-icon" onClick={()=>openEdit(row)}><Pencil size={14}/></button>
         <button className="btn btn-danger btn-sm btn-icon" onClick={()=>setConfirm(row)}><Trash2 size={14}/></button>
       </div>
     )},
   ];
+
+  const columns = ALL_COLUMNS.filter(c => c.alwaysVisible || visibleKeys.has(c.key));
 
   return (
     <div>
@@ -111,6 +117,7 @@ export default function BloodTestsPage() {
         </select>
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>
         <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
+        <ColumnSelector columns={ALL_COLUMNS} visibleKeys={visibleKeys} onChange={setVisibleKeys} onReset={()=>setVisibleKeys(DEFAULT_COLS)}/>
       </div>
       {loading?<div className="loading-center"><div className="spinner"/><span>Loading tests…</span></div>
         :<DataTable columns={columns} data={filtered} emptyMessage="No matching records found."/>}

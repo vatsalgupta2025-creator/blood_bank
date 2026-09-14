@@ -4,6 +4,7 @@ import { getDonors, createDonor, updateDonor, deleteDonor } from '../api';
 import { useToast } from '../context/ToastContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import ColumnSelector from '../components/ColumnSelector';
 import { BloodGroupBadge, GenderBadge, EligibilityBadge, formatDate } from '../components/Badges';
 
 const BLOOD_GROUPS = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
@@ -19,6 +20,9 @@ export default function DonorsPage() {
   const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
   const [saving,     setSaving]     = useState(false);
   const [confirm,    setConfirm]    = useState(null);
+
+  const DEFAULT_COLS = new Set(['first_name','blood_group','city','phone','total_donations','is_eligible']);
+  const [visibleKeys, setVisibleKeys] = useState(DEFAULT_COLS);
 
   const load = (params = {}) => {
     setLoading(true);
@@ -70,24 +74,26 @@ export default function DonorsPage() {
   const f   = modal.data;
   const set = (k,v) => setModal(m=>({...m, data:{...m.data,[k]:v}}));
 
-  const columns = [
-    { key:'donor_id',        label:'ID',         sortable:true, render:v=><span className="font-mono text-xs text-muted">#{v}</span> },
-    { key:'first_name',      label:'Name',        sortable:true, render:(_,row)=><strong>{row.first_name} {row.last_name}</strong> },
-    { key:'blood_group',     label:'Blood Group', sortable:true, render:v=><BloodGroupBadge group={v}/> },
-    { key:'age',             label:'Age',         sortable:true, render:v=>`${v} yrs` },
-    { key:'gender',          label:'Gender',      render:v=><GenderBadge gender={v}/> },
+  const ALL_COLUMNS = [
+    { key:'donor_id',        label:'ID',           sortable:true, render:v=><span className="font-mono text-xs text-muted">#{v}</span> },
+    { key:'first_name',      label:'Name',         sortable:true, render:(_,row)=><strong>{row.first_name} {row.last_name}</strong> },
+    { key:'blood_group',     label:'Blood Group',  sortable:true, render:v=><BloodGroupBadge group={v}/> },
+    { key:'age',             label:'Age',          sortable:true, render:v=>`${v} yrs` },
+    { key:'gender',          label:'Gender',       render:v=><GenderBadge gender={v}/> },
     { key:'phone',           label:'Phone' },
-    { key:'city',            label:'City',        sortable:true },
-    { key:'total_donations', label:'Donations',   sortable:true, render:v=><span className="badge badge-info">{v}</span> },
-    { key:'last_donation',   label:'Last Donated',render:v=>formatDate(v) },
-    { key:'is_eligible',     label:'Status',      render:v=><EligibilityBadge eligible={v}/> },
-    { key:'donor_id',        label:'Actions',     render:(_,row)=>(
+    { key:'city',            label:'City',         sortable:true },
+    { key:'total_donations', label:'Donations',    sortable:true, render:v=><span className="badge badge-info">{v}</span> },
+    { key:'last_donation',   label:'Last Donated', render:v=>formatDate(v) },
+    { key:'is_eligible',     label:'Status',       render:v=><EligibilityBadge eligible={v}/> },
+    { key:'actions',         label:'Actions',      alwaysVisible:true, render:(_,row)=>(
       <div className="flex gap-2">
         <button className="btn btn-ghost btn-sm btn-icon" onClick={()=>openEdit(row)}><Pencil size={14}/></button>
         <button className="btn btn-danger btn-sm btn-icon" onClick={()=>setConfirm(row)}><Trash2 size={14}/></button>
       </div>
     )},
   ];
+
+  const columns = ALL_COLUMNS.filter(c => c.alwaysVisible || visibleKeys.has(c.key));
 
   return (
     <div>
@@ -111,6 +117,12 @@ export default function DonorsPage() {
         </select>
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>
         <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
+        <ColumnSelector
+          columns={ALL_COLUMNS}
+          visibleKeys={visibleKeys}
+          onChange={setVisibleKeys}
+          onReset={()=>setVisibleKeys(DEFAULT_COLS)}
+        />
       </div>
 
       {loading

@@ -678,6 +678,117 @@ td strong, .td-primary { color: var(--text-primary); font-weight: 500; }
   margin-bottom: var(--space-5);
 }
 
+/* ── Column Selector ─────────────────────────────────────────── */
+.col-selector-wrap {
+  position: relative;
+}
+
+.col-selector-btn {
+  gap: var(--space-2);
+}
+
+.col-selector-btn.active {
+  border-color: var(--crimson);
+  color: var(--crimson);
+  background: var(--crimson-glow);
+}
+
+.col-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(220,20,60,0.15);
+  color: var(--crimson-light);
+  letter-spacing: 0.02em;
+}
+
+.col-selector-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-overlay);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--glass-border);
+  min-width: 220px;
+  max-width: 280px;
+  overflow: hidden;
+  animation: slideUp 150ms cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.col-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-input);
+}
+
+.col-selector-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.col-selector-list {
+  padding: var(--space-2) 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.col-selector-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px var(--space-4);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  user-select: none;
+  position: relative;
+}
+
+.col-selector-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.col-selector-item--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.col-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  color: white;
+}
+
+.col-checkbox.checked {
+  background: var(--crimson);
+  border-color: var(--crimson);
+}
+
+.col-selector-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 450;
+}
+
 .search-input-wrap {
   position: relative;
   flex: 1;

@@ -43,6 +43,8 @@ app.use('/api/blood-units',      require('./routes/bloodUnitRoutes'));
 app.use('/api/donation-events',  require('./routes/donationEventRoutes'));
 app.use('/api/blood-tests',      require('./routes/bloodTestRoutes'));
 app.use('/api/blood-requests',   require('./routes/bloodRequestRoutes'));
+app.use('/api/sql',              require('./routes/sqlRoutes'));
+app.use('/api/db-verification', require('./routes/dbVerificationRoutes'));
 
 // ── 404 handler ───────────────────────────────────────────────
 app.use((req, res) => {

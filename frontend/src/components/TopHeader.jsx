@@ -103,16 +103,17 @@ export default function TopHeader() {
           </NavLink>
 
           {/* Center: Navigation */}
-          <nav style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '6px 8px',
-            borderRadius: 16,
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.05)',
-          }}>
-            {[
+          {(() => {
+            let isAdmin = false;
+            try {
+              const userStr = localStorage.getItem('bb_user');
+              if (userStr) {
+                const u = JSON.parse(userStr);
+                if (u.role === 'Admin') isAdmin = true;
+              }
+            } catch {}
+
+            const navLinks = [
               { to: '/dashboard',        label: 'Dashboard' },
               { to: '/donors',           label: 'Donors' },
               { to: '/receivers',        label: 'Receivers' },
@@ -122,27 +123,46 @@ export default function TopHeader() {
               { to: '/donation-events',  label: 'Events' },
               { to: '/blood-tests',      label: 'Tests' },
               { to: '/staff',            label: 'Staff' },
-            ].map(link => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                style={({ isActive }) => ({
-                  padding: '8px 16px',
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 450,
-                  color: isActive ? '#F9F6F3' : 'rgba(255,255,255,0.45)',
-                  textDecoration: 'none',
-                  borderRadius: 10,
-                  background: isActive ? 'rgba(220,20,60,0.12)' : 'transparent',
-                  border: isActive ? '1px solid rgba(220,20,60,0.2)' : '1px solid transparent',
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap',
-                })}
-              >
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
+              ...(isAdmin ? [
+                { to: '/sql-console',      label: 'SQL Console' },
+                { to: '/db-verification',  label: 'DB Verification' }
+              ] : [])
+            ];
+
+            return (
+              <nav style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '6px 8px',
+                borderRadius: 16,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.05)',
+              }}>
+                {navLinks.map(link => (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    style={({ isActive }) => ({
+                      padding: '8px 14px',
+                      fontSize: 13,
+                      fontWeight: isActive ? 600 : 450,
+                      color: isActive ? '#F9F6F3' : 'rgba(255,255,255,0.45)',
+                      textDecoration: 'none',
+                      borderRadius: 10,
+                      background: isActive ? 'rgba(220,20,60,0.12)' : 'transparent',
+                      border: isActive ? '1px solid rgba(220,20,60,0.2)' : '1px solid transparent',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    })}
+                  >
+                    {link.label}
+                  </NavLink>
+                ))}
+              </nav>
+            );
+          })()}
+
 
           {/* Right: Actions */}
           <div style={{

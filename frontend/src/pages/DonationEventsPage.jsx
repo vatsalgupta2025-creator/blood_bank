@@ -4,6 +4,7 @@ import { getDonationEvents, createDonationEvent, updateDonationEvent, deleteDona
 import { useToast } from '../context/ToastContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import ColumnSelector from '../components/ColumnSelector';
 import { BloodGroupBadge, formatDate } from '../components/Badges';
 
 const EMPTY = { donor_id:'', bank_id:'', event_date:'', event_time:'', staff_id:'', notes:'' };
@@ -22,6 +23,9 @@ export default function DonationEventsPage() {
   const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
   const [saving,     setSaving]     = useState(false);
   const [confirm,    setConfirm]    = useState(null);
+
+  const DEFAULT_COLS = new Set(['event_id','donor_name','blood_group','bank_name','event_date','unit_code']);
+  const [visibleKeys, setVisibleKeys] = useState(DEFAULT_COLS);
 
   const BLOOD_GROUPS = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 
@@ -82,20 +86,22 @@ export default function DonationEventsPage() {
 
   const f=modal.data; const set=(k,v)=>setModal(m=>({...m,data:{...m.data,[k]:v}}));
 
-  const columns=[
-    {key:'event_id',   label:'#',      render:v=><span className="font-mono text-xs text-muted">#{v}</span>},
-    {key:'donor_name', label:'Donor',  sortable:true,render:v=><strong>{v}</strong>},
-    {key:'blood_group',label:'Blood',  render:v=><BloodGroupBadge group={v}/>},
-    {key:'bank_name',  label:'Bank',   sortable:true},
-    {key:'event_date', label:'Date',   sortable:true,render:v=>formatDate(v)},
+  const ALL_COLUMNS = [
+    {key:'event_id',   label:'#',        render:v=><span className="font-mono text-xs text-muted">#{v}</span>},
+    {key:'donor_name', label:'Donor',    sortable:true,render:v=><strong>{v}</strong>},
+    {key:'blood_group',label:'Blood',    render:v=><BloodGroupBadge group={v}/>},
+    {key:'bank_name',  label:'Bank',     sortable:true},
+    {key:'event_date', label:'Date',     sortable:true,render:v=>formatDate(v)},
     {key:'unit_code',  label:'Unit Code',render:v=><span className="font-mono text-xs">{v||'—'}</span>},
-    {key:'event_id',   label:'Actions', render:(_,row)=>(
+    {key:'actions',    label:'Actions',  alwaysVisible:true, render:(_,row)=>(
       <div className="flex gap-2">
         <button className="btn btn-ghost btn-sm btn-icon" onClick={()=>openEdit(row)}><Pencil size={14}/></button>
         <button className="btn btn-danger btn-sm btn-icon" onClick={()=>setConfirm(row)}><Trash2 size={14}/></button>
       </div>
     )},
   ];
+
+  const columns = ALL_COLUMNS.filter(c => c.alwaysVisible || visibleKeys.has(c.key));
 
   return (
     <div>
@@ -119,6 +125,7 @@ export default function DonationEventsPage() {
         <input className="form-input" type="date" style={{width:150}} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>
         <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
+        <ColumnSelector columns={ALL_COLUMNS} visibleKeys={visibleKeys} onChange={setVisibleKeys} onReset={()=>setVisibleKeys(DEFAULT_COLS)}/>
       </div>
       {loading?<div className="loading-center"><div className="spinner"/><span>Loading events…</span></div>
         :<DataTable columns={columns} data={filtered} emptyMessage="No matching records found."/>}

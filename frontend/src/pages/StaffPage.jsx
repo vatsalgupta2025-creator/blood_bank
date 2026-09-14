@@ -4,6 +4,7 @@ import { getStaff, createStaffMember, updateStaffMember, deleteStaffMember, getB
 import { useToast } from '../context/ToastContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import ColumnSelector from '../components/ColumnSelector';
 import { RoleBadge, formatDate } from '../components/Badges';
 
 const ROLES = ['Doctor','Nurse','Technician','Admin','Receptionist'];
@@ -21,6 +22,9 @@ export default function StaffPage() {
   const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
   const [saving,     setSaving]     = useState(false);
   const [confirm,    setConfirm]    = useState(null);
+
+  const DEFAULT_COLS = new Set(['first_name','role','bank_name','shift','phone']);
+  const [visibleKeys, setVisibleKeys] = useState(DEFAULT_COLS);
 
   const loadStaff = (params = {}) => {
     setLoading(true);
@@ -77,7 +81,7 @@ export default function StaffPage() {
 
   const f=modal.data; const set=(k,v)=>setModal(m=>({...m,data:{...m.data,[k]:v}}));
 
-  const columns=[
+  const ALL_COLUMNS = [
     {key:'staff_id',  label:'#',       render:v=><span className="font-mono text-xs text-muted">#{v}</span>},
     {key:'first_name',label:'Name',    sortable:true,render:(_,row)=><strong>{row.first_name} {row.last_name}</strong>},
     {key:'role',      label:'Role',    sortable:true,render:v=><RoleBadge role={v}/>},
@@ -86,13 +90,15 @@ export default function StaffPage() {
     {key:'phone',     label:'Phone'},
     {key:'email',     label:'Email',   render:v=><span className="font-mono text-xs">{v||'—'}</span>},
     {key:'hired_date',label:'Hired',   render:v=>formatDate(v)},
-    {key:'staff_id',  label:'Actions', render:(_,row)=>(
+    {key:'actions',   label:'Actions', alwaysVisible:true, render:(_,row)=>(
       <div className="flex gap-2">
         <button className="btn btn-ghost btn-sm btn-icon" onClick={()=>openEdit(row)}><Pencil size={14}/></button>
         <button className="btn btn-danger btn-sm btn-icon" onClick={()=>setConfirm(row)}><Trash2 size={14}/></button>
       </div>
     )},
   ];
+
+  const columns = ALL_COLUMNS.filter(c => c.alwaysVisible || visibleKeys.has(c.key));
 
   return (
     <div>
@@ -115,6 +121,7 @@ export default function StaffPage() {
         </select>
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>
         <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
+        <ColumnSelector columns={ALL_COLUMNS} visibleKeys={visibleKeys} onChange={setVisibleKeys} onReset={()=>setVisibleKeys(DEFAULT_COLS)}/>
       </div>
       {loading?<div className="loading-center"><div className="spinner"/><span>Loading staff…</span></div>
         :<DataTable columns={columns} data={filtered} emptyMessage="No matching records found."/>}
