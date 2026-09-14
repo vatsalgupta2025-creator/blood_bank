@@ -2,7 +2,7 @@ const pool = require('../config/db');
 
 const getAll = async (req, res, next) => {
   try {
-    const { status, urgency, blood_group } = req.query;
+    const { status, urgency, blood_group, city } = req.query;
     let sql = `
       SELECT br.*,
              CONCAT(r.first_name,' ',r.last_name) AS receiver_name,
@@ -18,6 +18,7 @@ const getAll = async (req, res, next) => {
     if (status)      { conditions.push('br.status = ?');      params.push(status); }
     if (urgency)     { conditions.push('br.urgency = ?');     params.push(urgency); }
     if (blood_group) { conditions.push('br.blood_group = ?'); params.push(blood_group); }
+    if (city)        { conditions.push('r.hospital_city LIKE ?'); params.push(`%${city}%`); }
     if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
     sql += " ORDER BY FIELD(br.urgency,'Critical','Urgent','Normal'), br.request_date DESC";
     const [rows] = await pool.query(sql, params);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, Users, AlertTriangle } from 'lucide-react';
 import { getDonors, createDonor, updateDonor, deleteDonor } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -11,31 +11,40 @@ const EMPTY = { first_name:'', last_name:'', dob:'', gender:'Male', blood_group:
 
 export default function DonorsPage() {
   const toast = useToast();
-  const [donors,  setDonors]  = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [bgFilter,setBgFilter]= useState('');
-  const [modal,   setModal]   = useState({ open:false, mode:'add', data:EMPTY });
-  const [saving,  setSaving]  = useState(false);
-  const [confirm, setConfirm] = useState(null);
+  const [donors,     setDonors]     = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [nameSearch, setNameSearch] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+  const [bgFilter,   setBgFilter]   = useState('');
+  const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
+  const [saving,     setSaving]     = useState(false);
+  const [confirm,    setConfirm]    = useState(null);
 
-  const load = () => {
+  const load = (params = {}) => {
     setLoading(true);
-    getDonors()
+    getDonors(params)
       .then(r => setDonors(r.data))
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  useEffect(() => load(), []);
 
-  const filtered = useMemo(() =>
-    donors.filter(d => {
-      const q = search.toLowerCase();
-      const matchSearch = !q || [d.first_name, d.last_name, d.phone, d.city, d.blood_group]
-        .some(v => v?.toLowerCase().includes(q));
-      const matchBg = !bgFilter || d.blood_group === bgFilter;
-      return matchSearch && matchBg;
-    }), [donors, search, bgFilter]);
+  const handleSearch = () => {
+    const params = {};
+    if (nameSearch) params.name = nameSearch;
+    if (citySearch) params.city = citySearch;
+    if (bgFilter)   params.blood_group = bgFilter;
+    load(params);
+  };
+
+  const handleClear = () => {
+    setNameSearch('');
+    setCitySearch('');
+    setBgFilter('');
+    load();
+  };
+
+  const filtered = donors;
 
   const openAdd  = ()    => setModal({ open:true, mode:'add', data:EMPTY });
   const openEdit = (row) => setModal({ open:true, mode:'edit', data:{ ...row, dob:row.dob?.split('T')[0]||'' }});
@@ -93,17 +102,20 @@ export default function DonorsPage() {
       <div className="filter-bar">
         <div className="search-input-wrap" style={{flex:2}}>
           <Search className="search-icon"/>
-          <input className="search-input" placeholder="Search by name, phone, city…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <input className="search-input" placeholder="Search by name…" value={nameSearch} onChange={e=>setNameSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         </div>
+        <input className="form-input" style={{width:150}} placeholder="City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
           <option value="">All Blood Groups</option>
           {BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
         </select>
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
 
       {loading
         ? <div className="loading-center"><div className="spinner"/><span>Loading donors…</span></div>
-        : <DataTable columns={columns} data={filtered} emptyMessage="No donors found." />
+        : <DataTable columns={columns} data={filtered} emptyMessage="No matching records found." />
       }
 
       <Modal isOpen={modal.open} onClose={closeModal} title={modal.mode==='add'?'Add Donor':'Edit Donor'}

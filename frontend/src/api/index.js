@@ -35,7 +35,7 @@ export const login = (email, password) => api.post('/auth/login', { email, passw
 export const getDashboardSummary = () => api.get('/dashboard/summary');
 
 // Blood Banks
-export const getBloodBanks       = ()     => api.get('/blood-banks');
+export const getBloodBanks       = (params) => api.get('/blood-banks', { params });
 export const getBloodBank        = (id)   => api.get(`/blood-banks/${id}`);
 export const getBloodBankStats   = (id)   => api.get(`/blood-banks/${id}/stats`);
 export const createBloodBank     = (data) => api.post('/blood-banks', data);

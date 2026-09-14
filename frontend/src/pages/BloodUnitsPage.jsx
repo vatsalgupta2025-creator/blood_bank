@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, Droplets, AlertTriangle } from 'lucide-react';
 import { getBloodUnits, createBloodUnit, updateBloodUnit, deleteBloodUnit, getBloodBanks } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -12,15 +12,23 @@ const EMPTY = { bank_id:'', unit_code:'', blood_group:'O+', volume_ml:450, colle
 
 export default function BloodUnitsPage() {
   const toast = useToast();
-  const [units,   setUnits]   = useState([]);
-  const [banks,   setBanks]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [bgFilter,setBgFilter]= useState('');
-  const [stFilter,setStFilter]= useState('');
-  const [modal,   setModal]   = useState({ open:false, mode:'add', data:EMPTY });
-  const [saving,  setSaving]  = useState(false);
-  const [confirm, setConfirm] = useState(null);
+  const [units,      setUnits]      = useState([]);
+  const [banks,      setBanks]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [bgFilter,   setBgFilter]   = useState('');
+  const [stFilter,   setStFilter]   = useState('');
+  const [bankFilter, setBankFilter] = useState('');
+  const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
+  const [saving,     setSaving]     = useState(false);
+  const [confirm,    setConfirm]    = useState(null);
+
+  const loadUnits = (params = {}) => {
+    setLoading(true);
+    getBloodUnits(params)
+      .then(u => setUnits(u.data))
+      .catch(e => toast.error(e.message))
+      .finally(() => setLoading(false));
+  };
 
   const load = () => {
     setLoading(true);
@@ -31,12 +39,22 @@ export default function BloodUnitsPage() {
   };
   useEffect(load, []);
 
-  const filtered = useMemo(() =>
-    units.filter(u => {
-      const q = search.toLowerCase();
-      const m = !q || [u.unit_code, u.bank_name, u.blood_group].some(v=>v?.toLowerCase().includes(q));
-      return m && (!bgFilter||u.blood_group===bgFilter) && (!stFilter||u.status===stFilter);
-    }), [units, search, bgFilter, stFilter]);
+  const handleSearch = () => {
+    const params = {};
+    if (bgFilter)   params.blood_group = bgFilter;
+    if (stFilter)   params.status = stFilter;
+    if (bankFilter) params.bank_id = bankFilter;
+    loadUnits(params);
+  };
+
+  const handleClear = () => {
+    setBgFilter('');
+    setStFilter('');
+    setBankFilter('');
+    loadUnits();
+  };
+
+  const filtered = units;
 
   const openAdd  = ()    => setModal({ open:true, mode:'add', data:{ ...EMPTY, bank_id: banks[0]?.bank_id||'' } });
   const openEdit = (row) => setModal({ open:true, mode:'edit', data:{
@@ -96,10 +114,6 @@ export default function BloodUnitsPage() {
       </div>
 
       <div className="filter-bar">
-        <div className="search-input-wrap" style={{flex:2}}>
-          <Search className="search-icon"/>
-          <input className="search-input" placeholder="Search unit code, bank…" value={search} onChange={e=>setSearch(e.target.value)}/>
-        </div>
         <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
           <option value="">All Blood Groups</option>
           {BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
@@ -108,11 +122,17 @@ export default function BloodUnitsPage() {
           <option value="">All Statuses</option>
           {STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
+        <select className="form-select" style={{width:180}} value={bankFilter} onChange={e=>setBankFilter(e.target.value)}>
+          <option value="">All Blood Banks</option>
+          {banks.map(b=><option key={b.bank_id} value={b.bank_id}>{b.name}</option>)}
+        </select>
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
 
       {loading
         ? <div className="loading-center"><div className="spinner"/><span>Loading blood units…</span></div>
-        : <DataTable columns={columns} data={filtered} emptyMessage="No blood units found." />
+        : <DataTable columns={columns} data={filtered} emptyMessage="No matching records found." />
       }
 
       <Modal isOpen={modal.open} onClose={closeModal} title={modal.mode==='add'?'Add Blood Unit':'Edit Blood Unit'}

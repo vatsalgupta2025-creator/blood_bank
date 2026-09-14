@@ -1,11 +1,27 @@
 const pool = require('../config/db');
 
-// GET /api/blood-banks
 const getAll = async (req, res, next) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM blood_bank ORDER BY name ASC'
-    );
+    const { name, city } = req.query;
+    let sql = 'SELECT * FROM blood_bank';
+    const params = [];
+    const conditions = [];
+
+    if (name) {
+      conditions.push('name LIKE ?');
+      params.push(`%${name}%`);
+    }
+    if (city) {
+      conditions.push('city LIKE ?');
+      params.push(`%${city}%`);
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    sql += ' ORDER BY name ASC';
+    const [rows] = await pool.query(sql, params);
     res.json({ success: true, count: rows.length, data: rows });
   } catch (err) { next(err); }
 };

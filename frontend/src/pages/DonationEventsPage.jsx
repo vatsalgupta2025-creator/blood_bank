@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, CalendarHeart, AlertTriangle } from 'lucide-react';
 import { getDonationEvents, createDonationEvent, updateDonationEvent, deleteDonationEvent, getDonors, getBloodBanks, getStaff } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -10,15 +10,28 @@ const EMPTY = { donor_id:'', bank_id:'', event_date:'', event_time:'', staff_id:
 
 export default function DonationEventsPage() {
   const toast = useToast();
-  const [events,  setEvents]  = useState([]);
-  const [donors,  setDonors]  = useState([]);
-  const [banks,   setBanks]   = useState([]);
-  const [staff,   setStaff]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [modal,   setModal]   = useState({ open:false, mode:'add', data:EMPTY });
-  const [saving,  setSaving]  = useState(false);
-  const [confirm, setConfirm] = useState(null);
+  const [events,     setEvents]     = useState([]);
+  const [donors,     setDonors]     = useState([]);
+  const [banks,      setBanks]      = useState([]);
+  const [staff,      setStaff]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [donorSearch,setDonorSearch]= useState('');
+  const [bgFilter,   setBgFilter]   = useState('');
+  const [bankFilter, setBankFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
+  const [saving,     setSaving]     = useState(false);
+  const [confirm,    setConfirm]    = useState(null);
+
+  const BLOOD_GROUPS = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+
+  const loadEvents = (params = {}) => {
+    setLoading(true);
+    getDonationEvents(params)
+      .then(e => setEvents(e.data))
+      .catch(e => toast.error(e.message))
+      .finally(() => setLoading(false));
+  };
 
   const load = () => {
     setLoading(true);
@@ -28,10 +41,24 @@ export default function DonationEventsPage() {
   };
   useEffect(load,[]);
 
-  const filtered = useMemo(()=>events.filter(ev=>{
-    const q=search.toLowerCase();
-    return !q||[ev.donor_name,ev.bank_name,ev.staff_name].some(v=>v?.toLowerCase().includes(q));
-  }),[events,search]);
+  const handleSearch = () => {
+    const params = {};
+    if (donorSearch) params.donor_name = donorSearch;
+    if (bgFilter)    params.blood_group = bgFilter;
+    if (bankFilter)  params.bank_id = bankFilter;
+    if (dateFilter)  params.event_date = dateFilter;
+    loadEvents(params);
+  };
+
+  const handleClear = () => {
+    setDonorSearch('');
+    setBgFilter('');
+    setBankFilter('');
+    setDateFilter('');
+    loadEvents();
+  };
+
+  const filtered = events;
 
   const openAdd  = ()    => setModal({open:true,mode:'add',data:{...EMPTY,bank_id:banks[0]?.bank_id||'',donor_id:donors[0]?.donor_id||''}});
   const openEdit = (row) => setModal({open:true,mode:'edit',data:{...row,event_date:row.event_date?.split('T')[0]||''}});
@@ -80,12 +107,21 @@ export default function DonationEventsPage() {
         <button className="btn btn-primary" onClick={openAdd}><Plus size={16}/> Record Event</button>
       </div>
       <div className="filter-bar">
-        <div className="search-input-wrap"><Search className="search-icon"/>
-          <input className="search-input" placeholder="Search donor, bank, staff…" value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div className="search-input-wrap" style={{flex:2}}><Search className="search-icon"/>
+          <input className="search-input" placeholder="Search donor name…" value={donorSearch} onChange={e=>setDonorSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         </div>
+        <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
+          <option value="">All Blood Groups</option>{BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
+        </select>
+        <select className="form-select" style={{width:180}} value={bankFilter} onChange={e=>setBankFilter(e.target.value)}>
+          <option value="">All Banks</option>{banks.map(b=><option key={b.bank_id} value={b.bank_id}>{b.name}</option>)}
+        </select>
+        <input className="form-input" type="date" style={{width:150}} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
       {loading?<div className="loading-center"><div className="spinner"/><span>Loading events…</span></div>
-        :<DataTable columns={columns} data={filtered} emptyMessage="No donation events found."/>}
+        :<DataTable columns={columns} data={filtered} emptyMessage="No matching records found."/>}
 
       <Modal isOpen={modal.open} onClose={closeModal} title={modal.mode==='add'?'Record Donation Event':'Edit Event'}
         footer={<><button className="btn btn-ghost" onClick={closeModal}>Cancel</button>

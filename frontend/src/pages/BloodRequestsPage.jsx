@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, ClipboardList, AlertTriangle } from 'lucide-react';
 import { getBloodRequests, createBloodRequest, updateBloodRequest, deleteBloodRequest, getBloodBanks, getReceivers } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -17,12 +17,21 @@ export default function BloodRequestsPage() {
   const [banks,     setBanks]     = useState([]);
   const [receivers, setReceivers] = useState([]);
   const [loading,   setLoading]   = useState(true);
-  const [search,    setSearch]    = useState('');
+  const [bgFilter,  setBgFilter]  = useState('');
+  const [citySearch,setCitySearch]= useState('');
   const [stFilter,  setStFilter]  = useState('');
   const [ugFilter,  setUgFilter]  = useState('');
   const [modal,     setModal]     = useState({ open:false, mode:'add', data:EMPTY });
   const [saving,    setSaving]    = useState(false);
   const [confirm,   setConfirm]   = useState(null);
+
+  const loadRequests = (params = {}) => {
+    setLoading(true);
+    getBloodRequests(params)
+      .then(r => setRequests(r.data))
+      .catch(e => toast.error(e.message))
+      .finally(() => setLoading(false));
+  };
 
   const load = () => {
     setLoading(true);
@@ -33,12 +42,24 @@ export default function BloodRequestsPage() {
   };
   useEffect(load, []);
 
-  const filtered = useMemo(() =>
-    requests.filter(r => {
-      const q = search.toLowerCase();
-      const m = !q || [r.receiver_name, r.bank_name, r.blood_group].some(v=>v?.toLowerCase().includes(q));
-      return m && (!stFilter||r.status===stFilter) && (!ugFilter||r.urgency===ugFilter);
-    }), [requests, search, stFilter, ugFilter]);
+  const handleSearch = () => {
+    const params = {};
+    if (bgFilter)   params.blood_group = bgFilter;
+    if (citySearch) params.city = citySearch;
+    if (stFilter)   params.status = stFilter;
+    if (ugFilter)   params.urgency = ugFilter;
+    loadRequests(params);
+  };
+
+  const handleClear = () => {
+    setBgFilter('');
+    setCitySearch('');
+    setStFilter('');
+    setUgFilter('');
+    loadRequests();
+  };
+
+  const filtered = requests;
 
   const openAdd  = () => {
     const bank = banks[0];
@@ -127,10 +148,11 @@ export default function BloodRequestsPage() {
       </div>
 
       <div className="filter-bar">
-        <div className="search-input-wrap" style={{flex:2}}>
-          <Search className="search-icon"/>
-          <input className="search-input" placeholder="Search receiver, bank, blood group…" value={search} onChange={e=>setSearch(e.target.value)}/>
-        </div>
+        <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
+          <option value="">All Blood Groups</option>
+          {BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
+        </select>
+        <input className="form-input" style={{width:140}} placeholder="Receiver City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         <select className="form-select" style={{width:140}} value={ugFilter} onChange={e=>setUgFilter(e.target.value)}>
           <option value="">All Urgencies</option>
           {URGENCIES.map(u=><option key={u}>{u}</option>)}
@@ -139,11 +161,13 @@ export default function BloodRequestsPage() {
           <option value="">All Statuses</option>
           {STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
 
       {loading
         ? <div className="loading-center"><div className="spinner"/><span>Loading requests…</span></div>
-        : <DataTable columns={columns} data={filtered} emptyMessage="No blood requests found." />
+        : <DataTable columns={columns} data={filtered} emptyMessage="No matching records found." />
       }
 
       <Modal isOpen={modal.open} onClose={closeModal} title={modal.mode==='add'?'New Blood Request':'Edit Request'}

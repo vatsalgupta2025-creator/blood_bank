@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, FlaskConical, AlertTriangle } from 'lucide-react';
 import { getBloodTests, createBloodTest, updateBloodTest, deleteBloodTest, getDonors, getDonationEvents, getStaff } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -12,16 +12,24 @@ const EMPTY = { event_id:'', donor_id:'', test_type:'HIV', tested_date:'', resul
 
 export default function BloodTestsPage() {
   const toast = useToast();
-  const [tests,   setTests]   = useState([]);
-  const [donors,  setDonors]  = useState([]);
-  const [events,  setEvents]  = useState([]);
-  const [staff,   setStaff]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [resFilter,setResFilter]=useState('');
-  const [modal,   setModal]   = useState({ open:false, mode:'add', data:EMPTY });
-  const [saving,  setSaving]  = useState(false);
-  const [confirm, setConfirm] = useState(null);
+  const [tests,     setTests]     = useState([]);
+  const [donors,    setDonors]    = useState([]);
+  const [events,    setEvents]    = useState([]);
+  const [staff,     setStaff]     = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [resFilter, setResFilter] = useState('');
+  const [typeFilter,setTypeFilter]= useState('');
+  const [modal,     setModal]     = useState({ open:false, mode:'add', data:EMPTY });
+  const [saving,    setSaving]    = useState(false);
+  const [confirm,   setConfirm]   = useState(null);
+
+  const loadTests = (params = {}) => {
+    setLoading(true);
+    getBloodTests(params)
+      .then(t => setTests(t.data))
+      .catch(e => toast.error(e.message))
+      .finally(() => setLoading(false));
+  };
 
   const load = () => {
     setLoading(true);
@@ -31,11 +39,20 @@ export default function BloodTestsPage() {
   };
   useEffect(load,[]);
 
-  const filtered = useMemo(()=>tests.filter(t=>{
-    const q=search.toLowerCase();
-    const m=!q||[t.donor_name,t.test_type,t.tester_name].some(v=>v?.toLowerCase().includes(q));
-    return m&&(!resFilter||t.result===resFilter);
-  }),[tests,search,resFilter]);
+  const handleSearch = () => {
+    const params = {};
+    if (resFilter)  params.result = resFilter;
+    if (typeFilter) params.test_type = typeFilter;
+    loadTests(params);
+  };
+
+  const handleClear = () => {
+    setResFilter('');
+    setTypeFilter('');
+    loadTests();
+  };
+
+  const filtered = tests;
 
   const openAdd  = ()    => setModal({open:true,mode:'add',data:{...EMPTY,donor_id:donors[0]?.donor_id||'',event_id:events[0]?.event_id||''}});
   const openEdit = (row) => setModal({open:true,mode:'edit',data:{...row,tested_date:row.tested_date?.split('T')[0]||''}});
@@ -86,15 +103,17 @@ export default function BloodTestsPage() {
         <button className="btn btn-primary" onClick={openAdd}><Plus size={16}/> Add Test</button>
       </div>
       <div className="filter-bar">
-        <div className="search-input-wrap" style={{flex:2}}><Search className="search-icon"/>
-          <input className="search-input" placeholder="Search donor, test type…" value={search} onChange={e=>setSearch(e.target.value)}/>
-        </div>
+        <select className="form-select" style={{width:200}} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
+          <option value="">All Test Types</option>{TEST_TYPES.map(t=><option key={t}>{t}</option>)}
+        </select>
         <select className="form-select" style={{width:140}} value={resFilter} onChange={e=>setResFilter(e.target.value)}>
           <option value="">All Results</option>{RESULTS.map(r=><option key={r}>{r}</option>)}
         </select>
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
       {loading?<div className="loading-center"><div className="spinner"/><span>Loading tests…</span></div>
-        :<DataTable columns={columns} data={filtered} emptyMessage="No blood tests found."/>}
+        :<DataTable columns={columns} data={filtered} emptyMessage="No matching records found."/>}
 
       <Modal isOpen={modal.open} onClose={closeModal} title={modal.mode==='add'?'Record Blood Test':'Edit Test'}
         footer={<><button className="btn btn-ghost" onClick={closeModal}>Cancel</button>

@@ -2,7 +2,7 @@ const pool = require('../config/db');
 
 const getAll = async (req, res, next) => {
   try {
-    const { bank_id, role } = req.query;
+    const { name, bank_id, role } = req.query;
     let sql = `
       SELECT s.*, bb.name AS bank_name,
              CONCAT(s.first_name,' ',s.last_name) AS full_name
@@ -10,6 +10,7 @@ const getAll = async (req, res, next) => {
       JOIN blood_bank bb ON bb.bank_id = s.bank_id
     `;
     const conditions = [], params = [];
+    if (name)    { conditions.push(`(s.first_name LIKE ? OR s.last_name LIKE ?)`); params.push(`%${name}%`, `%${name}%`); }
     if (bank_id) { conditions.push('s.bank_id = ?'); params.push(bank_id); }
     if (role)    { conditions.push('s.role = ?');    params.push(role); }
     if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');

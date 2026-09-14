@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, UserCog, AlertTriangle } from 'lucide-react';
 import { getStaff, createStaffMember, updateStaffMember, deleteStaffMember, getBloodBanks } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -12,14 +12,23 @@ const EMPTY = { bank_id:'', first_name:'', last_name:'', role:'Doctor', phone:''
 
 export default function StaffPage() {
   const toast = useToast();
-  const [staff,   setStaff]   = useState([]);
-  const [banks,   setBanks]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
+  const [staff,      setStaff]      = useState([]);
+  const [banks,      setBanks]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [nameSearch, setNameSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [modal,   setModal]   = useState({ open:false, mode:'add', data:EMPTY });
-  const [saving,  setSaving]  = useState(false);
-  const [confirm, setConfirm] = useState(null);
+  const [bankFilter, setBankFilter] = useState('');
+  const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
+  const [saving,     setSaving]     = useState(false);
+  const [confirm,    setConfirm]    = useState(null);
+
+  const loadStaff = (params = {}) => {
+    setLoading(true);
+    getStaff(params)
+      .then(s => setStaff(s.data))
+      .catch(e => toast.error(e.message))
+      .finally(() => setLoading(false));
+  };
 
   const load = () => {
     setLoading(true);
@@ -29,11 +38,22 @@ export default function StaffPage() {
   };
   useEffect(load,[]);
 
-  const filtered = useMemo(()=>staff.filter(s=>{
-    const q=search.toLowerCase();
-    const m=!q||[s.first_name,s.last_name,s.bank_name,s.email].some(v=>v?.toLowerCase().includes(q));
-    return m&&(!roleFilter||s.role===roleFilter);
-  }),[staff,search,roleFilter]);
+  const handleSearch = () => {
+    const params = {};
+    if (nameSearch) params.name = nameSearch;
+    if (roleFilter) params.role = roleFilter;
+    if (bankFilter) params.bank_id = bankFilter;
+    loadStaff(params);
+  };
+
+  const handleClear = () => {
+    setNameSearch('');
+    setRoleFilter('');
+    setBankFilter('');
+    loadStaff();
+  };
+
+  const filtered = staff;
 
   const openAdd  = ()    => setModal({open:true,mode:'add',data:{...EMPTY,bank_id:banks[0]?.bank_id||''}});
   const openEdit = (row) => setModal({open:true,mode:'edit',data:{...row,hired_date:row.hired_date?.split('T')[0]||''}});
@@ -85,14 +105,19 @@ export default function StaffPage() {
       </div>
       <div className="filter-bar">
         <div className="search-input-wrap" style={{flex:2}}><Search className="search-icon"/>
-          <input className="search-input" placeholder="Search name, bank, email…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <input className="search-input" placeholder="Search by name…" value={nameSearch} onChange={e=>setNameSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         </div>
         <select className="form-select" style={{width:150}} value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}>
           <option value="">All Roles</option>{ROLES.map(r=><option key={r}>{r}</option>)}
         </select>
+        <select className="form-select" style={{width:180}} value={bankFilter} onChange={e=>setBankFilter(e.target.value)}>
+          <option value="">All Banks</option>{banks.map(b=><option key={b.bank_id} value={b.bank_id}>{b.name}</option>)}
+        </select>
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
       {loading?<div className="loading-center"><div className="spinner"/><span>Loading staff…</span></div>
-        :<DataTable columns={columns} data={filtered} emptyMessage="No staff found."/>}
+        :<DataTable columns={columns} data={filtered} emptyMessage="No matching records found."/>}
 
       <Modal isOpen={modal.open} onClose={closeModal} title={modal.mode==='add'?'Add Staff Member':'Edit Staff'}
         footer={<><button className="btn btn-ghost" onClick={closeModal}>Cancel</button>

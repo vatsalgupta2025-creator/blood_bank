@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, UserRound, AlertTriangle } from 'lucide-react';
 import { getReceivers, createReceiver, updateReceiver, deleteReceiver } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -11,25 +11,37 @@ const EMPTY = { first_name:'', last_name:'', dob:'', gender:'Male', blood_group:
 
 export default function ReceiversPage() {
   const toast = useToast();
-  const [data,    setData]    = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [bgFilter,setBgFilter]= useState('');
-  const [modal,   setModal]   = useState({ open:false, mode:'add', data:EMPTY });
-  const [saving,  setSaving]  = useState(false);
-  const [confirm, setConfirm] = useState(null);
+  const [data,       setData]       = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [nameSearch, setNameSearch] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+  const [bgFilter,   setBgFilter]   = useState('');
+  const [modal,      setModal]      = useState({ open:false, mode:'add', data:EMPTY });
+  const [saving,     setSaving]     = useState(false);
+  const [confirm,    setConfirm]    = useState(null);
 
-  const load = () => {
+  const load = (params = {}) => {
     setLoading(true);
-    getReceivers().then(r=>setData(r.data)).catch(e=>toast.error(e.message)).finally(()=>setLoading(false));
+    getReceivers(params).then(r=>setData(r.data)).catch(e=>toast.error(e.message)).finally(()=>setLoading(false));
   };
-  useEffect(load, []);
+  useEffect(() => load(), []);
 
-  const filtered = useMemo(()=>data.filter(r=>{
-    const q=search.toLowerCase();
-    const m=!q||[r.first_name,r.last_name,r.hospital_name,r.blood_group].some(v=>v?.toLowerCase().includes(q));
-    return m&&(!bgFilter||r.blood_group===bgFilter);
-  }),[data,search,bgFilter]);
+  const handleSearch = () => {
+    const params = {};
+    if (nameSearch) params.name = nameSearch;
+    if (citySearch) params.city = citySearch;
+    if (bgFilter)   params.blood_group = bgFilter;
+    load(params);
+  };
+
+  const handleClear = () => {
+    setNameSearch('');
+    setCitySearch('');
+    setBgFilter('');
+    load();
+  };
+
+  const filtered = data;
 
   const openAdd  = ()    => setModal({open:true,mode:'add',data:EMPTY});
   const openEdit = (row) => setModal({open:true,mode:'edit',data:{...row,dob:row.dob?.split('T')[0]||''}});
@@ -81,14 +93,17 @@ export default function ReceiversPage() {
       </div>
       <div className="filter-bar">
         <div className="search-input-wrap" style={{flex:2}}><Search className="search-icon"/>
-          <input className="search-input" placeholder="Search name, hospital…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <input className="search-input" placeholder="Search by name…" value={nameSearch} onChange={e=>setNameSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         </div>
+        <input className="form-input" style={{width:150}} placeholder="Hospital City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
           <option value="">All Blood Groups</option>{BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
         </select>
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
       {loading?<div className="loading-center"><div className="spinner"/><span>Loading receivers…</span></div>
-        :<DataTable columns={columns} data={filtered} emptyMessage="No receivers found."/>}
+        :<DataTable columns={columns} data={filtered} emptyMessage="No matching records found."/>}
 
       <Modal isOpen={modal.open} onClose={closeModal} title={modal.mode==='add'?'Add Receiver':'Edit Receiver'}
         footer={<><button className="btn btn-ghost" onClick={closeModal}>Cancel</button>

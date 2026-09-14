@@ -2,24 +2,40 @@ const pool = require('../config/db');
 
 const getAll = async (req, res, next) => {
   try {
-    const { blood_group, eligible } = req.query;
+    const { name, city, blood_group, eligible } = req.query;
     let sql = `
       SELECT d.*, TIMESTAMPDIFF(YEAR, d.dob, CURDATE()) AS age,
              MAX(bb.name) AS preferred_bank
       FROM donor d
       LEFT JOIN donation_event de ON de.donor_id = d.donor_id
       LEFT JOIN blood_bank bb ON bb.bank_id = de.bank_id
-      GROUP BY d.donor_id
-      ORDER BY d.first_name ASC
     `;
     const params = [];
     const conditions = [];
-    if (blood_group) conditions.push('d.blood_group = ?') && params.push(blood_group);
-    if (eligible !== undefined) conditions.push('d.is_eligible = ?') && params.push(eligible === 'true' ? 1 : 0);
-
-    if (conditions.length) {
-      sql = sql.replace('WHERE', '').replace('GROUP BY', `WHERE ${conditions.join(' AND ')} GROUP BY`);
+    
+    if (name) {
+      conditions.push(`(d.first_name LIKE ? OR d.last_name LIKE ?)`);
+      params.push(`%${name}%`, `%${name}%`);
     }
+    if (city) {
+      conditions.push(`d.city LIKE ?`);
+      params.push(`%${city}%`);
+    }
+    if (blood_group) {
+      conditions.push(`d.blood_group = ?`);
+      params.push(blood_group);
+    }
+    if (eligible !== undefined) {
+      conditions.push(`d.is_eligible = ?`);
+      params.push(eligible === 'true' ? 1 : 0);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(' AND ');
+    }
+    
+    sql += ` GROUP BY d.donor_id ORDER BY d.first_name ASC`;
+
     const [rows] = await pool.query(sql, params);
     res.json({ success: true, count: rows.length, data: rows });
   } catch (err) { next(err); }

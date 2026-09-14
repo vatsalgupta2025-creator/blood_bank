@@ -2,7 +2,8 @@ const pool = require('../config/db');
 
 const getAll = async (req, res, next) => {
   try {
-    const [rows] = await pool.query(`
+    const { donor_name, bank_id, blood_group, event_date } = req.query;
+    let sql = `
       SELECT de.*,
              CONCAT(d.first_name,' ',d.last_name) AS donor_name, d.blood_group,
              bb.name AS bank_name,
@@ -13,8 +14,15 @@ const getAll = async (req, res, next) => {
       JOIN blood_bank bb ON bb.bank_id = de.bank_id
       LEFT JOIN blood_unit bu ON bu.unit_id = de.unit_id
       LEFT JOIN staff s ON s.staff_id = de.staff_id
-      ORDER BY de.event_date DESC
-    `);
+    `;
+    const conditions = [], params = [];
+    if (donor_name)  { conditions.push(`(d.first_name LIKE ? OR d.last_name LIKE ?)`); params.push(`%${donor_name}%`, `%${donor_name}%`); }
+    if (bank_id)     { conditions.push(`de.bank_id = ?`); params.push(bank_id); }
+    if (blood_group) { conditions.push(`d.blood_group = ?`); params.push(blood_group); }
+    if (event_date)  { conditions.push(`de.event_date = ?`); params.push(event_date); }
+    if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
+    sql += ' ORDER BY de.event_date DESC';
+    const [rows] = await pool.query(sql, params);
     res.json({ success: true, count: rows.length, data: rows });
   } catch (err) { next(err); }
 };

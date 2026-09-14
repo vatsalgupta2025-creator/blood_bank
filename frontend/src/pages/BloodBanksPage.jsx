@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, Building2, AlertTriangle } from 'lucide-react';
 import { getBloodBanks, createBloodBank, updateBloodBank, deleteBloodBank } from '../api';
 import { useToast } from '../context/ToastContext';
@@ -9,27 +9,38 @@ const EMPTY = { name:'', address:'', city:'', state:'', phone:'', email:'', capa
 
 export default function BloodBanksPage() {
   const toast = useToast();
-  const [banks,   setBanks]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [modal,   setModal]   = useState({ open: false, mode: 'add', data: EMPTY });
-  const [saving,  setSaving]  = useState(false);
-  const [confirm, setConfirm] = useState(null);
+  const [banks,      setBanks]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [nameSearch, setNameSearch] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+  const [modal,      setModal]      = useState({ open: false, mode: 'add', data: EMPTY });
+  const [saving,     setSaving]     = useState(false);
+  const [confirm,    setConfirm]    = useState(null);
 
-  const load = () => {
+  const load = (params = {}) => {
     setLoading(true);
-    getBloodBanks()
+    getBloodBanks(params)
       .then(r => setBanks(r.data))
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(() => load(), []);
 
-  const filtered = useMemo(() =>
-    banks.filter(b =>
-      [b.name, b.city, b.state, b.email].some(v => v?.toLowerCase().includes(search.toLowerCase()))
-    ), [banks, search]);
+  const handleSearch = () => {
+    const params = {};
+    if (nameSearch) params.name = nameSearch;
+    if (citySearch) params.city = citySearch;
+    load(params);
+  };
+
+  const handleClear = () => {
+    setNameSearch('');
+    setCitySearch('');
+    load();
+  };
+
+  const filtered = banks;
 
   const openAdd  = ()    => setModal({ open:true, mode:'add',  data: EMPTY });
   const openEdit = (row) => setModal({ open:true, mode:'edit', data: { ...row, established: row.established?.split('T')[0] || '' } });
@@ -91,15 +102,18 @@ export default function BloodBanksPage() {
       </div>
 
       <div className="filter-bar">
-        <div className="search-input-wrap">
+        <div className="search-input-wrap" style={{flex:2}}>
           <Search className="search-icon" />
-          <input className="search-input" placeholder="Search by name, city, state…" value={search} onChange={e=>setSearch(e.target.value)} />
+          <input className="search-input" placeholder="Search by name…" value={nameSearch} onChange={e=>setNameSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()} />
         </div>
+        <input className="form-input" style={{width:150}} placeholder="City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()} />
+        <button className="btn btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
       </div>
 
       {loading
         ? <div className="loading-center"><div className="spinner"/><span>Loading banks…</span></div>
-        : <DataTable columns={columns} data={filtered} emptyMessage="No blood banks found." />
+        : <DataTable columns={columns} data={filtered} emptyMessage="No matching records found." />
       }
 
       {/* Add/Edit Modal */}

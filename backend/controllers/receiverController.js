@@ -2,10 +2,28 @@ const pool = require('../config/db');
 
 const getAll = async (req, res, next) => {
   try {
-    const { blood_group } = req.query;
+    const { name, city, blood_group } = req.query;
     let sql = `SELECT r.*, TIMESTAMPDIFF(YEAR, r.dob, CURDATE()) AS age FROM receiver r`;
     const params = [];
-    if (blood_group) { sql += ' WHERE r.blood_group = ?'; params.push(blood_group); }
+    const conditions = [];
+
+    if (name) {
+      conditions.push(`(r.first_name LIKE ? OR r.last_name LIKE ?)`);
+      params.push(`%${name}%`, `%${name}%`);
+    }
+    if (city) {
+      conditions.push(`r.hospital_city LIKE ?`);
+      params.push(`%${city}%`);
+    }
+    if (blood_group) {
+      conditions.push(`r.blood_group = ?`);
+      params.push(blood_group);
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
     sql += ' ORDER BY r.first_name ASC';
     const [rows] = await pool.query(sql, params);
     res.json({ success: true, count: rows.length, data: rows });
