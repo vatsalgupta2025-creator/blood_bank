@@ -37,7 +37,7 @@ function PageLayout({ title, subtitle, children }) {
           </span>
         </div>
       </header>
-      <main className="page-wrapper" id="main-content" style={{ padding: '24px' }}>
+      <main className="page-wrapper" id="main-content">
         {children}
       </main>
     </>

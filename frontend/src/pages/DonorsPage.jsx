@@ -106,12 +106,12 @@ export default function DonorsPage() {
       </div>
 
       <div className="filter-bar">
-        <div className="search-input-wrap" style={{flex:2}}>
+        <div className="search-input-wrap" >
           <Search className="search-icon"/>
           <input className="search-input" placeholder="Search by name…" value={nameSearch} onChange={e=>setNameSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         </div>
-        <input className="form-input" style={{width:150}} placeholder="City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
-        <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
+        <input className="form-input"  placeholder="City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
+        <select className="form-select"  value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
           <option value="">All Blood Groups</option>
           {BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
         </select>

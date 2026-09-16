@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { Droplet, Moon, Sun } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Droplet, Moon, Sun, Menu, X } from 'lucide-react';
 import Modal from './Modal';
 import { getBloodBanks, createDonationEvent } from '../api';
 import { useToast } from '../context/ToastContext';
 
 export default function TopHeader() {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [banks, setBanks] = useState([]);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({ donor_name: '', bank_id: '', event_date: '' });
+
+  // Close mobile nav on route change
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark');
@@ -60,7 +67,7 @@ export default function TopHeader() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         {/* Main navbar */}
-        <div style={{
+        <div className="top-header-container" style={{
           maxWidth: 1400,
           margin: '0 auto',
           padding: '0 32px',
@@ -68,7 +75,7 @@ export default function TopHeader() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 24,
+          gap: 16,
         }}>
 
           {/* Left: Logo */}
@@ -130,41 +137,81 @@ export default function TopHeader() {
             ];
 
             return (
-              <nav style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '6px 8px',
-                borderRadius: 16,
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.05)',
-              }}>
-                {navLinks.map(link => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    style={({ isActive }) => ({
-                      padding: '8px 14px',
-                      fontSize: 13,
-                      fontWeight: isActive ? 600 : 450,
-                      color: isActive ? '#F9F6F3' : 'rgba(255,255,255,0.45)',
-                      textDecoration: 'none',
-                      borderRadius: 10,
-                      background: isActive ? 'rgba(220,20,60,0.12)' : 'transparent',
-                      border: isActive ? '1px solid rgba(220,20,60,0.2)' : '1px solid transparent',
-                      transition: 'all 0.2s ease',
-                      whiteSpace: 'nowrap',
-                    })}
-                  >
-                    {link.label}
-                  </NavLink>
-                ))}
-              </nav>
+              <>
+                {/* Desktop Navigation */}
+                <nav className="desktop-nav" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '6px 8px',
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                }}>
+                  {navLinks.map(link => (
+                    <NavLink
+                      key={link.to}
+                      to={link.to}
+                      style={({ isActive }) => ({
+                        padding: '8px 14px',
+                        fontSize: 13,
+                        fontWeight: isActive ? 600 : 450,
+                        color: isActive ? '#F9F6F3' : 'rgba(255,255,255,0.45)',
+                        textDecoration: 'none',
+                        borderRadius: 10,
+                        background: isActive ? 'rgba(220,20,60,0.12)' : 'transparent',
+                        border: isActive ? '1px solid rgba(220,20,60,0.2)' : '1px solid transparent',
+                        transition: 'all 0.2s ease',
+                        whiteSpace: 'nowrap',
+                      })}
+                    >
+                      {link.label}
+                    </NavLink>
+                  ))}
+                </nav>
+
+                {/* Mobile Drawer Rendering (Portal-like or absolute) */}
+                <div 
+                  className={`mobile-nav-overlay ${isMobileNavOpen ? 'open' : ''}`}
+                  onClick={() => setIsMobileNavOpen(false)}
+                ></div>
+                <div className={`mobile-nav-drawer ${isMobileNavOpen ? 'open' : ''}`}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>Menu</span>
+                    <button 
+                      onClick={() => setIsMobileNavOpen(false)}
+                      style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: 8 }}
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                  <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {navLinks.map(link => (
+                      <NavLink
+                        key={link.to}
+                        to={link.to}
+                        style={({ isActive }) => ({
+                          padding: '14px 16px',
+                          fontSize: 15,
+                          fontWeight: isActive ? 600 : 450,
+                          color: isActive ? '#F9F6F3' : 'rgba(255,255,255,0.6)',
+                          textDecoration: 'none',
+                          borderRadius: 12,
+                          background: isActive ? 'rgba(220,20,60,0.12)' : 'rgba(255,255,255,0.02)',
+                          border: isActive ? '1px solid rgba(220,20,60,0.2)' : '1px solid transparent',
+                        })}
+                      >
+                        {link.label}
+                      </NavLink>
+                    ))}
+                  </nav>
+                </div>
+              </>
             );
           })()}
 
 
-          {/* Right: Actions */}
+          {/* Right: Actions & Mobile Toggle */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -172,6 +219,7 @@ export default function TopHeader() {
             flexShrink: 0,
           }}>
             <button
+              className="action-icon-btn"
               onClick={toggleTheme}
               style={{
                 width: 38,
@@ -199,6 +247,7 @@ export default function TopHeader() {
             </button>
 
             <button
+              className="desktop-only-btn"
               onClick={openBookingModal}
               style={{
                 padding: '10px 22px',
@@ -226,6 +275,7 @@ export default function TopHeader() {
             </button>
 
             <button
+              className="desktop-only-btn"
               onClick={() => {
                 localStorage.removeItem('bb_user');
                 window.location.href = '/login';
@@ -253,6 +303,24 @@ export default function TopHeader() {
               }}
             >
               Log Out
+            </button>
+            
+            <button 
+              className="mobile-menu-btn"
+              onClick={() => setIsMobileNavOpen(true)}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.04)',
+                color: '#F9F6F3',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Menu size={20} />
             </button>
           </div>
         </div>

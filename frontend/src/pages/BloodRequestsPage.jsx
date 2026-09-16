@@ -154,16 +154,16 @@ export default function BloodRequestsPage() {
       </div>
 
       <div className="filter-bar">
-        <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
+        <select className="form-select"  value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
           <option value="">All Blood Groups</option>
           {BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
         </select>
-        <input className="form-input" style={{width:140}} placeholder="Receiver City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
-        <select className="form-select" style={{width:140}} value={ugFilter} onChange={e=>setUgFilter(e.target.value)}>
+        <input className="form-input"  placeholder="Receiver City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
+        <select className="form-select"  value={ugFilter} onChange={e=>setUgFilter(e.target.value)}>
           <option value="">All Urgencies</option>
           {URGENCIES.map(u=><option key={u}>{u}</option>)}
         </select>
-        <select className="form-select" style={{width:140}} value={stFilter} onChange={e=>setStFilter(e.target.value)}>
+        <select className="form-select"  value={stFilter} onChange={e=>setStFilter(e.target.value)}>
           <option value="">All Statuses</option>
           {STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>

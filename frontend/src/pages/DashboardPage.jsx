@@ -108,12 +108,9 @@ export default function DashboardPage() {
           position: 'relative', maxWidth: 1280, margin: '0 auto',
           padding: '64px 40px', width: '100%',
         }}>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr',
-            gap: 48, alignItems: 'center',
-          }}>
+          <div className="dash-hero-grid">
             {/* Left */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+            <div className="hero-left-col" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               {/* Trust badge */}
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC143C', animation: 'pulse 2s infinite' }} />
@@ -249,9 +246,8 @@ export default function DashboardPage() {
         padding: '24px 0',
         width: '100%',
       }}>
-        <div style={{
+        <div className="dash-stats-grid" style={{
           maxWidth: 1280, margin: '0 auto', padding: '0 40px',
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0,
         }}>
           {[
             { value: `${data.availableUnits}+`, label: 'Blood Units' },
@@ -278,7 +274,7 @@ export default function DashboardPage() {
 
       {/* ── DETAILED OVERVIEW SECTIONS ─────────────────────────────── */}
       <section style={{ padding: '64px 40px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+        <div className="dash-2col-grid">
           
           {/* Blood Inventory Overview */}
           <div>
@@ -288,7 +284,7 @@ export default function DashboardPage() {
               </h2>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/blood-units')}>View All</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            <div className="dash-inventory-grid">
               {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(group => {
                 const count = data.bloodGroupInventory.find(g => g.blood_group === group)?.count || 0;
                 const isLow = count < 20;
@@ -360,7 +356,7 @@ export default function DashboardPage() {
           
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginTop: 40 }}>
+        <div className="dash-2col-grid" style={{ marginTop: 40 }}>
           
           {/* Recent Activity */}
           <div>
@@ -410,7 +406,7 @@ export default function DashboardPage() {
               </h2>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/blood-banks')}>View All</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="dash-connected-banks-grid">
               {banks.map(bank => (
                 <div key={bank.bank_id} style={{
                   background: 'rgba(255,255,255,0.03)',
@@ -466,11 +462,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Module cards grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 20,
-          }}>
+          <div className="dash-modules-grid">
             {modules.map((mod, i) => {
               const Icon = mod.icon;
               return (

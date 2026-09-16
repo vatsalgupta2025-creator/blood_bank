@@ -109,10 +109,10 @@ export default function BloodTestsPage() {
         <button className="btn btn-primary" onClick={openAdd}><Plus size={16}/> Add Test</button>
       </div>
       <div className="filter-bar">
-        <select className="form-select" style={{width:200}} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
+        <select className="form-select"  value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
           <option value="">All Test Types</option>{TEST_TYPES.map(t=><option key={t}>{t}</option>)}
         </select>
-        <select className="form-select" style={{width:140}} value={resFilter} onChange={e=>setResFilter(e.target.value)}>
+        <select className="form-select"  value={resFilter} onChange={e=>setResFilter(e.target.value)}>
           <option value="">All Results</option>{RESULTS.map(r=><option key={r}>{r}</option>)}
         </select>
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>

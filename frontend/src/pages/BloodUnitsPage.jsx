@@ -120,11 +120,11 @@ export default function BloodUnitsPage() {
       </div>
 
       <div className="filter-bar">
-        <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
+        <select className="form-select"  value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
           <option value="">All Blood Groups</option>
           {BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
         </select>
-        <select className="form-select" style={{width:140}} value={stFilter} onChange={e=>setStFilter(e.target.value)}>
+        <select className="form-select"  value={stFilter} onChange={e=>setStFilter(e.target.value)}>
           <option value="">All Statuses</option>
           {STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>

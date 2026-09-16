@@ -110,10 +110,10 @@ export default function StaffPage() {
         <button className="btn btn-primary" onClick={openAdd}><Plus size={16}/> Add Staff</button>
       </div>
       <div className="filter-bar">
-        <div className="search-input-wrap" style={{flex:2}}><Search className="search-icon"/>
+        <div className="search-input-wrap" ><Search className="search-icon"/>
           <input className="search-input" placeholder="Search by name…" value={nameSearch} onChange={e=>setNameSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         </div>
-        <select className="form-select" style={{width:150}} value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}>
+        <select className="form-select"  value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}>
           <option value="">All Roles</option>{ROLES.map(r=><option key={r}>{r}</option>)}
         </select>
         <select className="form-select" style={{width:180}} value={bankFilter} onChange={e=>setBankFilter(e.target.value)}>

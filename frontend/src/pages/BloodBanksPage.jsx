@@ -108,11 +108,11 @@ export default function BloodBanksPage() {
       </div>
 
       <div className="filter-bar">
-        <div className="search-input-wrap" style={{flex:2}}>
+        <div className="search-input-wrap" >
           <Search className="search-icon" />
           <input className="search-input" placeholder="Search by name…" value={nameSearch} onChange={e=>setNameSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()} />
         </div>
-        <input className="form-input" style={{width:150}} placeholder="City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()} />
+        <input className="form-input"  placeholder="City…" value={citySearch} onChange={e=>setCitySearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()} />
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>
         <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
         <ColumnSelector columns={ALL_COLUMNS} visibleKeys={visibleKeys} onChange={setVisibleKeys} onReset={()=>setVisibleKeys(DEFAULT_COLS)}/>

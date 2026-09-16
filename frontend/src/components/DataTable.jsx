@@ -39,39 +39,66 @@ export default function DataTable({ columns, data, emptyMessage = 'No records fo
   }
 
   return (
-    <div className="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            {columns.map(col => (
-              <th
-                key={col.key}
-                onClick={col.sortable ? () => handleSort(col.key) : undefined}
-                style={col.sortable ? { cursor: 'pointer', userSelect: 'none' } : {}}
-                aria-sort={sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  {col.label}
-                  {col.sortable && sortKey === col.key && (
-                    sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
-                  )}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row, i) => (
-            <tr key={row.id ?? i}>
+    <>
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
               {columns.map(col => (
-                <td key={col.key}>
-                  {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
-                </td>
+                <th
+                  key={col.key}
+                  onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                  style={col.sortable ? { cursor: 'pointer', userSelect: 'none' } : {}}
+                  aria-sort={sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {col.label}
+                    {col.sortable && sortKey === col.key && (
+                      sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+                    )}
+                  </span>
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {sorted.map((row, i) => (
+              <tr key={row.id ?? i}>
+                {columns.map(col => (
+                  <td key={col.key}>
+                    {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="mobile-card-list">
+        {sorted.map((row, i) => {
+          const actionCol = columns.find(c => c.key === 'actions' || c.label === 'Actions' || c.label === '');
+          const dataCols = columns.filter(c => c !== actionCol);
+          return (
+            <div key={row.id ?? i} className="mobile-card-item">
+              {dataCols.map(col => (
+                <div key={col.key} className="mobile-card-row">
+                  <div className="mobile-card-label">{col.label}</div>
+                  <div className="mobile-card-value">
+                    {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                  </div>
+                </div>
+              ))}
+              {actionCol && (
+                <div className="mobile-card-actions">
+                  {actionCol.render ? actionCol.render(row[actionCol.key], row) : (row[actionCol.key] ?? '')}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

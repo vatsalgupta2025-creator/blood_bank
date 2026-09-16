@@ -113,16 +113,16 @@ export default function DonationEventsPage() {
         <button className="btn btn-primary" onClick={openAdd}><Plus size={16}/> Record Event</button>
       </div>
       <div className="filter-bar">
-        <div className="search-input-wrap" style={{flex:2}}><Search className="search-icon"/>
+        <div className="search-input-wrap" ><Search className="search-icon"/>
           <input className="search-input" placeholder="Search donor name…" value={donorSearch} onChange={e=>setDonorSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}/>
         </div>
-        <select className="form-select" style={{width:150}} value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
+        <select className="form-select"  value={bgFilter} onChange={e=>setBgFilter(e.target.value)}>
           <option value="">All Blood Groups</option>{BLOOD_GROUPS.map(g=><option key={g}>{g}</option>)}
         </select>
         <select className="form-select" style={{width:180}} value={bankFilter} onChange={e=>setBankFilter(e.target.value)}>
           <option value="">All Banks</option>{banks.map(b=><option key={b.bank_id} value={b.bank_id}>{b.name}</option>)}
         </select>
-        <input className="form-input" type="date" style={{width:150}} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>
+        <input className="form-input" type="date"  value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>
         <button className="btn btn-ghost" onClick={handleClear}>Clear</button>
         <ColumnSelector columns={ALL_COLUMNS} visibleKeys={visibleKeys} onChange={setVisibleKeys} onReset={()=>setVisibleKeys(DEFAULT_COLS)}/>
