@@ -62,4 +62,5 @@ LifeFlow is a comprehensive Blood Bank Management System designed to connect don
    ```
 
 4. **Access the Application:**
-   Open your browser and navigate to `http://localhost:5173`.
+   Open your browser and navigate to 'https://blood-bank-phi-five.vercel.app/'.
+   
