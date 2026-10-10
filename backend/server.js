@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
+  console.error('FATAL: JWT_SECRET environment variable is missing or empty.');
+  process.exit(1);
+}
+
 const express    = require('express');
 const cors       = require('cors');
 const errorHandler = require('./middleware/errorHandler');

@@ -36,7 +36,7 @@ exports.login = async (req, res) => {
       bank_id: user.bank_id
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'fallback_secret_key', { expiresIn: '1d' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     res.json({
       success: true,

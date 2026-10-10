@@ -1,8 +1,14 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 
 const API_BASE = 'http://localhost:5000/api';
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is missing.');
+  process.exit(1);
+}
 
 // Tokens
 const adminToken = jwt.sign({ staff_id: 1, email: 'admin@test.com', role: 'Admin' }, JWT_SECRET, { expiresIn: '1h' });
