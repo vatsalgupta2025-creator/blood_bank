@@ -3,24 +3,130 @@ const { getSession, safeInt, toNative } = require('../config/neo4j');
 const neo4j = require('neo4j-driver');
 
 let isSyncing = false;
-let lastSyncMetadata = {
-  lastSyncTime: null,
-  nodeCounts: {
-    total: 0,
-    Donor: 0,
-    DonationEvent: 0,
-    BloodUnit: 0,
-    BloodTest: 0,
-    BloodBank: 0
-  },
-  relationshipCounts: {
-    total: 0,
-    DONATES: 0,
-    RECEIVED_AT: 0,
-    GENERATES: 0,
-    HAS_TEST: 0
+
+// ── Sync-log table helpers ───────────────────────────────────────────────────
+// The graph_sync_log MySQL table is created on first use (idempotent DDL).
+// Only successful syncs write a row with sync_status='success'.
+// Failed syncs write a row with sync_status='failure' so that the last
+// successful row is never overwritten by a failed attempt.
+
+let syncLogTableEnsured = false;
+
+async function ensureSyncLogTable() {
+  if (syncLogTableEnsured) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS graph_sync_log (
+      id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      synced_at            DATETIME     NOT NULL,
+      sync_status          VARCHAR(16)  NOT NULL DEFAULT 'success',
+      nodes_total          INT UNSIGNED NOT NULL DEFAULT 0,
+      nodes_donor          INT UNSIGNED NOT NULL DEFAULT 0,
+      nodes_donation_event INT UNSIGNED NOT NULL DEFAULT 0,
+      nodes_blood_unit     INT UNSIGNED NOT NULL DEFAULT 0,
+      nodes_blood_test     INT UNSIGNED NOT NULL DEFAULT 0,
+      nodes_blood_bank     INT UNSIGNED NOT NULL DEFAULT 0,
+      rels_total           INT UNSIGNED NOT NULL DEFAULT 0,
+      rels_donates         INT UNSIGNED NOT NULL DEFAULT 0,
+      rels_received_at     INT UNSIGNED NOT NULL DEFAULT 0,
+      rels_generates       INT UNSIGNED NOT NULL DEFAULT 0,
+      rels_has_test        INT UNSIGNED NOT NULL DEFAULT 0,
+      error_summary        VARCHAR(500)     NULL,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      COMMENT='Persists Neo4j graph-projection sync metadata for status reporting across restarts.'
+  `);
+  syncLogTableEnsured = true;
+}
+
+/**
+ * Persists sync outcome to MySQL.
+ * status: 'success' | 'failure'
+ * nodeCounts / relationshipCounts: objects matching the existing shape.
+ * errorSummary: optional short string (≤500 chars, no PII or stack traces).
+ */
+async function persistSyncMetadata(status, nodeCounts, relationshipCounts, errorSummary) {
+  try {
+    await ensureSyncLogTable();
+    const nc = nodeCounts       || {};
+    const rc = relationshipCounts || {};
+    const summary = errorSummary
+      ? String(errorSummary).slice(0, 500)
+      : null;
+    await pool.query(
+      `INSERT INTO graph_sync_log
+         (synced_at, sync_status,
+          nodes_total, nodes_donor, nodes_donation_event,
+          nodes_blood_unit, nodes_blood_test, nodes_blood_bank,
+          rels_total, rels_donates, rels_received_at, rels_generates, rels_has_test,
+          error_summary)
+       VALUES (UTC_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        status,
+        nc.total          || 0,
+        nc.Donor          || 0,
+        nc.DonationEvent  || 0,
+        nc.BloodUnit      || 0,
+        nc.BloodTest      || 0,
+        nc.BloodBank      || 0,
+        rc.total          || 0,
+        rc.DONATES        || 0,
+        rc.RECEIVED_AT    || 0,
+        rc.GENERATES      || 0,
+        rc.HAS_TEST       || 0,
+        summary
+      ]
+    );
+  } catch (dbErr) {
+    // Non-fatal: log a warning but do not propagate – the Neo4j sync already
+    // succeeded and we must not roll it back because of a metadata-write failure.
+    console.warn('[graphSyncService] Failed to persist sync metadata to MySQL:', dbErr.message);
   }
-};
+}
+
+/**
+ * Reads the most recent successful sync row from MySQL.
+ * Returns null if no successful sync has ever been recorded.
+ */
+async function fetchPersistedMetadata() {
+  try {
+    await ensureSyncLogTable();
+    const [rows] = await pool.query(
+      `SELECT synced_at,
+              nodes_total, nodes_donor, nodes_donation_event,
+              nodes_blood_unit, nodes_blood_test, nodes_blood_bank,
+              rels_total, rels_donates, rels_received_at, rels_generates, rels_has_test
+       FROM   graph_sync_log
+       WHERE  sync_status = 'success'
+       ORDER  BY id DESC
+       LIMIT  1`
+    );
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      lastSyncTime: r.synced_at instanceof Date
+        ? r.synced_at.toISOString()
+        : String(r.synced_at),
+      nodeCounts: {
+        total:         r.nodes_total,
+        Donor:         r.nodes_donor,
+        DonationEvent: r.nodes_donation_event,
+        BloodUnit:     r.nodes_blood_unit,
+        BloodTest:     r.nodes_blood_test,
+        BloodBank:     r.nodes_blood_bank
+      },
+      relationshipCounts: {
+        total:      r.rels_total,
+        DONATES:    r.rels_donates,
+        RECEIVED_AT: r.rels_received_at,
+        GENERATES:  r.rels_generates,
+        HAS_TEST:   r.rels_has_test
+      }
+    };
+  } catch (dbErr) {
+    console.warn('[graphSyncService] Failed to read sync metadata from MySQL:', dbErr.message);
+    return null;  // Caller handles null as "no metadata available"
+  }
+}
 
 function formatDate(val) {
   if (!val) return null;
@@ -301,16 +407,17 @@ async function syncGraph() {
       relationshipCounts.total += count;
     });
 
-    lastSyncMetadata = {
-      lastSyncTime: new Date().toISOString(),
-      nodeCounts,
-      relationshipCounts
-    };
+    // Persist sync metadata to MySQL so it survives process restarts.
+    // This is fire-and-forget: persistSyncMetadata swallows its own errors.
+    await persistSyncMetadata('success', nodeCounts, relationshipCounts, null);
 
+    const lastSyncTime = new Date().toISOString();
     return {
       success: true,
       message: 'Graph projection synchronized successfully.',
-      ...lastSyncMetadata
+      lastSyncTime,
+      nodeCounts,
+      relationshipCounts
     };
   } finally {
     isSyncing = false;
@@ -324,37 +431,49 @@ async function syncGraph() {
  * Returns current status of graph projection.
  */
 async function getGraphStatus() {
+  // ── 1. Neo4j connectivity check (independent of persisted metadata) ────────
   let session = null;
+  let isOnline = false;
   try {
     session = getSession(neo4j.session.READ);
-    const result = await session.run(`
-      RETURN 1 AS connected
-    `);
-    const isOnline = result.records.length > 0;
-
-    return {
-      success: true,
-      status: isOnline ? 'connected' : 'unavailable',
-      connected: isOnline,
-      lastSyncTime: lastSyncMetadata.lastSyncTime,
-      nodeCounts: lastSyncMetadata.nodeCounts,
-      relationshipCounts: lastSyncMetadata.relationshipCounts
-    };
-  } catch (err) {
-    return {
-      success: true,
-      status: 'unavailable',
-      connected: false,
-      message: 'Neo4j service is offline or unreachable.',
-      lastSyncTime: lastSyncMetadata.lastSyncTime,
-      nodeCounts: lastSyncMetadata.nodeCounts,
-      relationshipCounts: lastSyncMetadata.relationshipCounts
-    };
+    const result = await session.run('RETURN 1 AS connected');
+    isOnline = result.records.length > 0;
+  } catch (_err) {
+    isOnline = false;
   } finally {
     if (session) {
       await session.close().catch(() => {});
     }
   }
+
+  // ── 2. Read last successful sync metadata from MySQL ──────────────────────
+  // fetchPersistedMetadata() returns null when:
+  //   a) No successful sync has ever been recorded (table empty).
+  //   b) The MySQL query itself fails (e.g. table not yet migrated).
+  // In both cases we report 'not_synced' rather than inventing zeros.
+  const meta = await fetchPersistedMetadata();
+
+  if (meta) {
+    return {
+      success: true,
+      status: isOnline ? 'connected' : 'unavailable',
+      connected: isOnline,
+      lastSyncTime: meta.lastSyncTime,
+      nodeCounts: meta.nodeCounts,
+      relationshipCounts: meta.relationshipCounts
+    };
+  }
+
+  // No successful sync row found – return explicit not-synced state.
+  return {
+    success: true,
+    status: isOnline ? 'connected' : 'unavailable',
+    connected: isOnline,
+    lastSyncTime: null,
+    nodeCounts: null,
+    relationshipCounts: null,
+    message: 'No successful graph synchronization has been recorded yet. Run POST /api/graph/sync to populate the projection.'
+  };
 }
 
 /**
