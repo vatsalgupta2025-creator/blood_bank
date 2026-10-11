@@ -51,6 +51,7 @@ app.use('/api/blood-tests',      require('./routes/bloodTestRoutes'));
 app.use('/api/blood-requests',   require('./routes/bloodRequestRoutes'));
 app.use('/api/sql',              require('./routes/sqlRoutes'));
 app.use('/api/db-verification', require('./routes/dbVerificationRoutes'));
+app.use('/api/graph',           require('./routes/graphRoutes'));
 
 // ── 404 handler ───────────────────────────────────────────────
 app.use((req, res) => {
@@ -62,8 +63,10 @@ app.use(errorHandler);
 
 // ── Start server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 API base: http://localhost:${PORT}/api`);
   console.log(`💡 Health:   http://localhost:${PORT}/api/health\n`);
 });
+
+module.exports = { app, server };
