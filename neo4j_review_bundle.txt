@@ -1,0 +1,1223 @@
+================================================================================
+File: backend/config/neo4j.js
+================================================================================
+const neo4j = require('neo4j-driver');
+
+let driver = null;
+let isConnected = false;
+
+const uri = process.env.NEO4J_URI;
+const username = process.env.NEO4J_USERNAME;
+const password = process.env.NEO4J_PASSWORD;
+
+if (uri && username && password) {
+  try {
+    driver = neo4j.driver(uri, neo4j.auth.basic(username, password), {
+      maxConnectionPoolSize: 20,
+      connectionTimeout: 10000
+    });
+
+    // Asynchronously verify connectivity without blocking server startup
+    driver.verifyConnectivity()
+      .then(serverInfo => {
+        isConnected = true;
+        console.log('✅ Neo4j Aura connected successfully (Agent: ' + (serverInfo.agent || 'Neo4j') + ')');
+      })
+      .catch(err => {
+        isConnected = false;
+        console.warn('⚠️ Neo4j Aura connection check failed: ' + err.message);
+      });
+  } catch (err) {
+    isConnected = false;
+    driver = null;
+    console.warn('⚠️ Neo4j driver initialization failed: ' + err.message);
+  }
+} else {
+  console.log('ℹ️ Neo4j credentials not configured. Graph features running in offline/mock mode.');
+}
+
+function getDriver() {
+  return driver;
+}
+
+function getSession(mode = neo4j.session.READ) {
+  if (!driver) {
+    const error = new Error('Neo4j driver is not initialized or configured.');
+    error.statusCode = 503;
+    throw error;
+  }
+  return driver.session({ defaultAccessMode: mode });
+}
+
+async function checkConnection() {
+  if (!driver) return false;
+  try {
+    await driver.verifyConnectivity();
+    isConnected = true;
+    return true;
+  } catch (err) {
+    isConnected = false;
+    return false;
+  }
+}
+
+function isConfigured() {
+  return Boolean(uri && username && password);
+}
+
+function isAvailable() {
+  return Boolean(driver && isConnected);
+}
+
+async function closeDriver() {
+  if (driver) {
+    await driver.close();
+    driver = null;
+    isConnected = false;
+  }
+}
+
+// Helper to convert Neo4j types (Integers, Dates) safely to standard JS primitives
+function toNative(val) {
+  if (val === null || val === undefined) return val;
+  if (neo4j.isInt(val)) return val.toNumber();
+  if (Array.isArray(val)) return val.map(toNative);
+  if (typeof val === 'object') {
+    // If it's a Neo4j Node or Relationship
+    if (val.properties) {
+      return toNative(val.properties);
+    }
+    const res = {};
+    for (const key of Object.keys(val)) {
+      res[key] = toNative(val[key]);
+    }
+    return res;
+  }
+  return val;
+}
+
+// Helper to convert numbers to safe Neo4j Integers
+function safeInt(val) {
+  if (val === null || val === undefined) return null;
+  const num = Number(val);
+  return isNaN(num) ? null : neo4j.int(num);
+}
+
+module.exports = {
+  getDriver,
+  getSession,
+  checkConnection,
+  isConfigured,
+  isAvailable,
+  closeDriver,
+  toNative,
+  safeInt,
+  neo4j
+};
+
+================================================================================
+File: backend/services/graphSyncService.js
+================================================================================
+const pool = require('../config/db');
+const { getSession, safeInt, toNative } = require('../config/neo4j');
+const neo4j = require('neo4j-driver');
+
+let isSyncing = false;
+let lastSyncMetadata = {
+  lastSyncTime: null,
+  nodeCounts: {
+    total: 0,
+    Donor: 0,
+    DonationEvent: 0,
+    BloodUnit: 0,
+    BloodTest: 0,
+    BloodBank: 0
+  },
+  relationshipCounts: {
+    total: 0,
+    DONATES: 0,
+    RECEIVED_AT: 0,
+    GENERATES: 0,
+    HAS_TEST: 0
+  }
+};
+
+function formatDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return val.toISOString().split('T')[0];
+  }
+  if (typeof val === 'string') {
+    return val.split('T')[0];
+  }
+  return String(val);
+}
+
+function formatTime(val) {
+  if (!val) return null;
+  return String(val);
+}
+
+// Ensure database constraints exist on Neo4j schema
+async function ensureSchemaConstraints(session) {
+  const constraints = [
+    'CREATE CONSTRAINT donor_id_unique IF NOT EXISTS FOR (d:Donor) REQUIRE d.donor_id IS UNIQUE',
+    'CREATE CONSTRAINT event_id_unique IF NOT EXISTS FOR (e:DonationEvent) REQUIRE e.event_id IS UNIQUE',
+    'CREATE CONSTRAINT unit_id_unique IF NOT EXISTS FOR (u:BloodUnit) REQUIRE u.unit_id IS UNIQUE',
+    'CREATE CONSTRAINT test_id_unique IF NOT EXISTS FOR (t:BloodTest) REQUIRE t.test_id IS UNIQUE',
+    'CREATE CONSTRAINT bank_id_unique IF NOT EXISTS FOR (b:BloodBank) REQUIRE b.bank_id IS UNIQUE'
+  ];
+
+  for (const c of constraints) {
+    await session.run(c);
+  }
+}
+
+/**
+ * Reads 5 source tables from MySQL within a single consistent snapshot.
+ * STRICT PRIVACY: Omits donor names, phones, emails, streets, credentials, and PII.
+ */
+async function fetchMySQLSnapshot() {
+  const conn = await pool.getConnection();
+  try {
+    await conn.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    await conn.query('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+
+    // 1. Donors: strictly non-PII only
+    const [donors] = await conn.query('SELECT donor_id, blood_group FROM donor ORDER BY donor_id ASC');
+
+    // 2. Blood Banks
+    const [banks] = await conn.query('SELECT bank_id, name, city, state FROM blood_bank ORDER BY bank_id ASC');
+
+    // 3. Blood Units
+    const [units] = await conn.query('SELECT unit_id, unit_code, blood_group, volume_ml, collected_date, expiry_date, status FROM blood_unit ORDER BY unit_id ASC');
+
+    // 4. Donation Events
+    const [events] = await conn.query('SELECT event_id, donor_id, bank_id, unit_id, event_date, event_time, notes FROM donation_event ORDER BY event_id ASC');
+
+    // 5. Blood Tests
+    const [tests] = await conn.query('SELECT test_id, event_id, test_type, tested_date, result FROM blood_test ORDER BY test_id ASC');
+
+    await conn.query('COMMIT');
+
+    return { donors, banks, units, events, tests };
+  } catch (err) {
+    await conn.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Full replacement synchronization:
+ * 1. Concurrency guard prevents concurrent syncs.
+ * 2. Fetches MySQL snapshot.
+ * 3. Atomic Neo4j transaction replaces entire projection.
+ * If any error occurs, Neo4j rolls back and previously committed state remains intact.
+ */
+async function syncGraph() {
+  if (isSyncing) {
+    const error = new Error('Graph synchronization is already in progress.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  isSyncing = true;
+  let session = null;
+
+  try {
+    session = getSession(neo4j.session.WRITE);
+
+    // Ensure schema constraints are in place
+    await ensureSchemaConstraints(session);
+
+    // Fetch consistent snapshot from MySQL
+    const { donors, banks, units, events, tests } = await fetchMySQLSnapshot();
+
+    // Prepare bounded, sanitized parameters
+    const paramDonors = donors.map(d => ({
+      donor_id: safeInt(d.donor_id),
+      blood_group: d.blood_group
+    }));
+
+    const paramBanks = banks.map(b => ({
+      bank_id: safeInt(b.bank_id),
+      name: b.name,
+      city: b.city,
+      state: b.state
+    }));
+
+    const paramUnits = units.map(u => ({
+      unit_id: safeInt(u.unit_id),
+      unit_code: u.unit_code,
+      blood_group: u.blood_group,
+      volume_ml: safeInt(u.volume_ml),
+      collected_date: formatDate(u.collected_date),
+      expiry_date: formatDate(u.expiry_date),
+      status: u.status
+    }));
+
+    const paramEvents = events.map(e => ({
+      event_id: safeInt(e.event_id),
+      donor_id: safeInt(e.donor_id),
+      bank_id: safeInt(e.bank_id),
+      unit_id: e.unit_id ? safeInt(e.unit_id) : null,
+      event_date: formatDate(e.event_date),
+      event_time: formatTime(e.event_time),
+      notes: e.notes || ''
+    }));
+
+    const paramTests = tests.map(t => ({
+      test_id: safeInt(t.test_id),
+      event_id: safeInt(t.event_id),
+      test_type: t.test_type,
+      tested_date: formatDate(t.tested_date),
+      result: t.result
+    }));
+
+    // Safe, atomic write transaction
+    await session.executeWrite(async tx => {
+      // Step A: Clear projection completely to remove any records deleted from MySQL
+      await tx.run('MATCH (n) DETACH DELETE n');
+
+      // Step B: Insert BloodBank nodes
+      if (paramBanks.length > 0) {
+        await tx.run(`
+          UNWIND $banks AS b
+          CREATE (:BloodBank {
+            bank_id: b.bank_id,
+            name: b.name,
+            city: b.city,
+            state: b.state
+          })
+        `, { banks: paramBanks });
+      }
+
+      // Step C: Insert Donor nodes (No PII)
+      if (paramDonors.length > 0) {
+        await tx.run(`
+          UNWIND $donors AS d
+          CREATE (:Donor {
+            donor_id: d.donor_id,
+            blood_group: d.blood_group
+          })
+        `, { donors: paramDonors });
+      }
+
+      // Step D: Insert BloodUnit nodes
+      if (paramUnits.length > 0) {
+        await tx.run(`
+          UNWIND $units AS u
+          CREATE (:BloodUnit {
+            unit_id: u.unit_id,
+            unit_code: u.unit_code,
+            blood_group: u.blood_group,
+            volume_ml: u.volume_ml,
+            collected_date: u.collected_date,
+            expiry_date: u.expiry_date,
+            status: u.status
+          })
+        `, { units: paramUnits });
+      }
+
+      // Step E: Insert DonationEvent nodes & create supported relationships
+      // Donor -[:DONATES]-> DonationEvent
+      // DonationEvent -[:RECEIVED_AT]-> BloodBank
+      // DonationEvent -[:GENERATES]-> BloodUnit (only if unit_id is non-null)
+      if (paramEvents.length > 0) {
+        await tx.run(`
+          UNWIND $events AS e
+          CREATE (ev:DonationEvent {
+            event_id: e.event_id,
+            event_date: e.event_date,
+            event_time: e.event_time,
+            notes: e.notes
+          })
+          WITH ev, e
+          MATCH (d:Donor {donor_id: e.donor_id})
+          CREATE (d)-[:DONATES]->(ev)
+          WITH ev, e
+          MATCH (b:BloodBank {bank_id: e.bank_id})
+          CREATE (ev)-[:RECEIVED_AT]->(b)
+          WITH ev, e
+          WHERE e.unit_id IS NOT NULL
+          MATCH (u:BloodUnit {unit_id: e.unit_id})
+          CREATE (ev)-[:GENERATES]->(u)
+        `, { events: paramEvents });
+      }
+
+      // Step F: Insert BloodTest nodes & create relationship
+      // DonationEvent -[:HAS_TEST]-> BloodTest
+      if (paramTests.length > 0) {
+        await tx.run(`
+          UNWIND $tests AS t
+          CREATE (bt:BloodTest {
+            test_id: t.test_id,
+            test_type: t.test_type,
+            tested_date: t.tested_date,
+            result: t.result
+          })
+          WITH bt, t
+          MATCH (ev:DonationEvent {event_id: t.event_id})
+          CREATE (ev)-[:HAS_TEST]->(bt)
+        `, { tests: paramTests });
+      }
+    });
+
+    // Gather node counts
+    const nodeCountsResult = await session.run(`
+      MATCH (n)
+      RETURN labels(n)[0] AS label, count(n) AS cnt
+    `);
+    const nodeCounts = { total: 0, Donor: 0, DonationEvent: 0, BloodUnit: 0, BloodTest: 0, BloodBank: 0 };
+    nodeCountsResult.records.forEach(r => {
+      const label = r.get('label');
+      const count = toNative(r.get('cnt'));
+      if (nodeCounts[label] !== undefined) {
+        nodeCounts[label] = count;
+      }
+      nodeCounts.total += count;
+    });
+
+    // Gather relationship counts
+    const relCountsResult = await session.run(`
+      MATCH ()-[r]->()
+      RETURN type(r) AS relType, count(r) AS cnt
+    `);
+    const relationshipCounts = { total: 0, DONATES: 0, RECEIVED_AT: 0, GENERATES: 0, HAS_TEST: 0 };
+    relCountsResult.records.forEach(r => {
+      const relType = r.get('relType');
+      const count = toNative(r.get('cnt'));
+      if (relationshipCounts[relType] !== undefined) {
+        relationshipCounts[relType] = count;
+      }
+      relationshipCounts.total += count;
+    });
+
+    lastSyncMetadata = {
+      lastSyncTime: new Date().toISOString(),
+      nodeCounts,
+      relationshipCounts
+    };
+
+    return {
+      success: true,
+      message: 'Graph projection synchronized successfully.',
+      ...lastSyncMetadata
+    };
+  } finally {
+    isSyncing = false;
+    if (session) {
+      await session.close().catch(() => {});
+    }
+  }
+}
+
+/**
+ * Returns current status of graph projection.
+ */
+async function getGraphStatus() {
+  let session = null;
+  try {
+    session = getSession(neo4j.session.READ);
+    const result = await session.run(`
+      RETURN 1 AS connected
+    `);
+    const isOnline = result.records.length > 0;
+
+    return {
+      success: true,
+      status: isOnline ? 'connected' : 'unavailable',
+      connected: isOnline,
+      lastSyncTime: lastSyncMetadata.lastSyncTime,
+      nodeCounts: lastSyncMetadata.nodeCounts,
+      relationshipCounts: lastSyncMetadata.relationshipCounts
+    };
+  } catch (err) {
+    return {
+      success: true,
+      status: 'unavailable',
+      connected: false,
+      message: 'Neo4j service is offline or unreachable.',
+      lastSyncTime: lastSyncMetadata.lastSyncTime,
+      nodeCounts: lastSyncMetadata.nodeCounts,
+      relationshipCounts: lastSyncMetadata.relationshipCounts
+    };
+  } finally {
+    if (session) {
+      await session.close().catch(() => {});
+    }
+  }
+}
+
+/**
+ * Trace by Unit ID:
+ * End-to-end traceability path from BloodUnit back to DonationEvent, BloodBank, BloodTests, and Donor.
+ * Donor personal display information is fetched securely from MySQL.
+ */
+async function traceByUnitId(unitId) {
+  const numericUnitId = Number(unitId);
+  if (!numericUnitId || isNaN(numericUnitId)) {
+    const err = new Error('Invalid blood unit ID.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Authoritative check in MySQL
+  const [unitRows] = await pool.query(
+    'SELECT unit_id, bank_id, unit_code, blood_group, volume_ml, collected_date, expiry_date, status FROM blood_unit WHERE unit_id = ?',
+    [numericUnitId]
+  );
+
+  if (unitRows.length === 0) {
+    const err = new Error(`Blood unit ID ${numericUnitId} not found.`);
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const mysqlUnit = unitRows[0];
+  let session = null;
+
+  try {
+    try {
+      session = getSession(neo4j.session.READ);
+    } catch (err) {
+      return {
+        unit: mysqlUnit,
+        donationEvent: null,
+        donor: null,
+        bloodBank: null,
+        bloodTests: [],
+        projectionSynced: false
+      };
+    }
+
+    const cypherResult = await session.run(`
+      MATCH (u:BloodUnit {unit_id: $unitId})
+      OPTIONAL MATCH (ev:DonationEvent)-[:GENERATES]->(u)
+      OPTIONAL MATCH (d:Donor)-[:DONATES]->(ev)
+      OPTIONAL MATCH (ev)-[:RECEIVED_AT]->(b:BloodBank)
+      OPTIONAL MATCH (ev)-[:HAS_TEST]->(t:BloodTest)
+      RETURN u AS unit,
+             ev AS donationEvent,
+             d.donor_id AS donorId,
+             d.blood_group AS donorBloodGroup,
+             b AS bloodBank,
+             collect(DISTINCT t) AS bloodTests
+    `, { unitId: safeInt(numericUnitId) });
+
+    if (cypherResult.records.length === 0) {
+      // Graph projection hasn't synced this unit yet
+      return {
+        unit: mysqlUnit,
+        donationEvent: null,
+        donor: null,
+        bloodBank: null,
+        bloodTests: [],
+        projectionSynced: false
+      };
+    }
+
+    const record = cypherResult.records[0];
+    const unitNode = toNative(record.get('unit'));
+    const eventNode = toNative(record.get('donationEvent'));
+    const donorId = toNative(record.get('donorId'));
+    const donorBloodGroup = toNative(record.get('donorBloodGroup'));
+    const bankNode = toNative(record.get('bloodBank'));
+    const tests = toNative(record.get('bloodTests')) || [];
+
+    let donorDisplay = null;
+    if (donorId) {
+      // Fetch donor personal display info from MySQL authoritative source
+      const [donorRows] = await pool.query(
+        'SELECT donor_id, first_name, last_name, email, phone, blood_group FROM donor WHERE donor_id = ?',
+        [donorId]
+      );
+      if (donorRows.length > 0) {
+        const mysqlDonorRow = donorRows[0];
+        donorDisplay = {
+          donor_id: mysqlDonorRow.donor_id,
+          name: `${mysqlDonorRow.first_name} ${mysqlDonorRow.last_name}`,
+          email: mysqlDonorRow.email,
+          phone: mysqlDonorRow.phone,
+          blood_group: mysqlDonorRow.blood_group
+        };
+      } else {
+        donorDisplay = {
+          donor_id: donorId,
+          blood_group: donorBloodGroup
+        };
+      }
+    }
+
+    return {
+      unit: unitNode || mysqlUnit,
+      donationEvent: eventNode,
+      donor: donorDisplay,
+      bloodBank: bankNode,
+      bloodTests: tests,
+      projectionSynced: true
+    };
+  } finally {
+    if (session) {
+      await session.close().catch(() => {});
+    }
+  }
+}
+
+/**
+ * Trace by Donor ID:
+ * Traceability path from Donor to all DonationEvents, BloodBanks, BloodUnits, and BloodTests.
+ * Zero-donation donors return a valid empty trace.
+ * Unknown IDs return 404.
+ */
+async function traceByDonorId(donorId) {
+  const numericDonorId = Number(donorId);
+  if (!numericDonorId || isNaN(numericDonorId)) {
+    const err = new Error('Invalid donor ID.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Authoritative check in MySQL
+  const [donorRows] = await pool.query(
+    'SELECT donor_id, first_name, last_name, email, phone, blood_group FROM donor WHERE donor_id = ?',
+    [numericDonorId]
+  );
+
+  if (donorRows.length === 0) {
+    const err = new Error(`Donor ID ${numericDonorId} not found.`);
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const mysqlDonorRow = donorRows[0];
+  const donorDisplay = {
+    donor_id: mysqlDonorRow.donor_id,
+    name: `${mysqlDonorRow.first_name} ${mysqlDonorRow.last_name}`,
+    email: mysqlDonorRow.email,
+    phone: mysqlDonorRow.phone,
+    blood_group: mysqlDonorRow.blood_group
+  };
+
+  let session = null;
+  try {
+    try {
+      session = getSession(neo4j.session.READ);
+    } catch (err) {
+      return {
+        donor: donorDisplay,
+        totalDonations: 0,
+        donations: [],
+        projectionSynced: false
+      };
+    }
+
+    const cypherResult = await session.run(`
+      MATCH (d:Donor {donor_id: $donorId})
+      OPTIONAL MATCH (d)-[:DONATES]->(ev:DonationEvent)
+      OPTIONAL MATCH (ev)-[:RECEIVED_AT]->(b:BloodBank)
+      OPTIONAL MATCH (ev)-[:GENERATES]->(u:BloodUnit)
+      OPTIONAL MATCH (ev)-[:HAS_TEST]->(t:BloodTest)
+      WITH d, ev, b, u, collect(DISTINCT t) AS tests
+      ORDER BY ev.event_date DESC
+      RETURN ev AS donationEvent,
+             b AS bloodBank,
+             u AS bloodUnit,
+             tests AS bloodTests
+    `, { donorId: safeInt(numericDonorId) });
+
+    const donations = [];
+
+    for (const record of cypherResult.records) {
+      const eventNode = toNative(record.get('donationEvent'));
+      if (eventNode) {
+        donations.push({
+          donationEvent: eventNode,
+          bloodBank: toNative(record.get('bloodBank')),
+          bloodUnit: toNative(record.get('bloodUnit')),
+          bloodTests: toNative(record.get('bloodTests')) || []
+        });
+      }
+    }
+
+    return {
+      donor: donorDisplay,
+      totalDonations: donations.length,
+      donations,
+      projectionSynced: true
+    };
+  } finally {
+    if (session) {
+      await session.close().catch(() => {});
+    }
+  }
+}
+
+module.exports = {
+  syncGraph,
+  getGraphStatus,
+  traceByUnitId,
+  traceByDonorId
+};
+
+================================================================================
+File: backend/controllers/graphController.js
+================================================================================
+const graphSyncService = require('../services/graphSyncService');
+
+/**
+ * Admin-only: Trigger full graph projection synchronization.
+ * POST /api/graph/sync
+ */
+exports.sync = async (req, res, next) => {
+  try {
+    const result = await graphSyncService.syncGraph();
+    res.json({
+      success: true,
+      message: 'Neo4j graph projection replaced successfully from MySQL.',
+      lastSyncTime: result.lastSyncTime,
+      nodeCounts: result.nodeCounts,
+      relationshipCounts: result.relationshipCounts
+    });
+  } catch (error) {
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        success: false,
+        message: error.message
+      });
+    }
+    if (error.statusCode === 503) {
+      return res.status(503).json({
+        success: false,
+        message: error.message
+      });
+    }
+    console.error('Graph synchronization error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to synchronize graph projection: ' + error.message
+    });
+  }
+};
+
+/**
+ * Authenticated: Get Neo4j graph projection status and health.
+ * GET /api/graph/status
+ */
+exports.getStatus = async (req, res, next) => {
+  try {
+    const status = await graphSyncService.getGraphStatus();
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve graph status: ' + error.message
+    });
+  }
+};
+
+/**
+ * Authenticated: Get donor-to-donation-to-blood-unit trace for a specific BloodUnit.
+ * GET /api/graph/trace/unit/:id
+ */
+exports.traceUnit = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const trace = await graphSyncService.traceByUnitId(id);
+    res.json({
+      success: true,
+      data: trace
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to trace blood unit: ' + error.message
+    });
+  }
+};
+
+/**
+ * Authenticated: Get donation traceability for a specific Donor.
+ * Zero donations return valid empty trace.
+ * GET /api/graph/trace/donor/:id
+ */
+exports.traceDonor = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const trace = await graphSyncService.traceByDonorId(id);
+    res.json({
+      success: true,
+      data: trace
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to trace donor: ' + error.message
+    });
+  }
+};
+
+================================================================================
+File: backend/routes/graphRoutes.js
+================================================================================
+const express = require('express');
+const router = express.Router();
+const auth = require('../middleware/authMiddleware');
+const authorize = require('../middleware/roleMiddleware');
+const graphController = require('../controllers/graphController');
+
+// POST /api/graph/sync - Admin only: full projection replacement
+router.post('/sync', auth, authorize('Admin'), graphController.sync);
+
+// GET /api/graph/status - Authenticated: graph projection health & sync status
+router.get('/status', auth, graphController.getStatus);
+
+// GET /api/graph/trace/unit/:id - Authenticated: trace blood unit lineage
+router.get('/trace/unit/:id', auth, graphController.traceUnit);
+
+// GET /api/graph/trace/donor/:id - Authenticated: trace donor donation lineage
+router.get('/trace/donor/:id', auth, graphController.traceDonor);
+
+// Convenient alias for unit trace
+router.get('/trace/:id', auth, graphController.traceUnit);
+
+module.exports = router;
+
+================================================================================
+File: backend/scripts/test_neo4j_integration.js
+================================================================================
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const axios = require('axios');
+const jwt = require('jsonwebtoken');
+const pool = require('../config/db');
+const neo4jConfig = require('../config/neo4j');
+
+const API_BASE = 'http://localhost:5000/api';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is missing.');
+  process.exit(1);
+}
+
+// Generate test JWT tokens
+const adminToken = jwt.sign({ staff_id: 1, email: 'admin@test.com', role: 'Admin' }, JWT_SECRET, { expiresIn: '1h' });
+const nurseToken = jwt.sign({ staff_id: 2, email: 'nurse@test.com', role: 'Nurse' }, JWT_SECRET, { expiresIn: '1h' });
+const doctorToken = jwt.sign({ staff_id: 3, email: 'doctor@test.com', role: 'Doctor' }, JWT_SECRET, { expiresIn: '1h' });
+
+async function runTests() {
+  console.log('====================================================');
+  console.log('  LifeFlow Neo4j Aura Integration Verification Test ');
+  console.log('====================================================\n');
+
+  let passed = 0;
+  let failed = 0;
+
+  function assert(condition, testName, details = '') {
+    if (condition) {
+      console.log(`✅ PASS: ${testName}`);
+      passed++;
+    } else {
+      console.error(`❌ FAIL: ${testName} - ${details}`);
+      failed++;
+    }
+  }
+
+  // ── TEST 1: Existing API Startup & Health ──────────────────────────────
+  try {
+    const res = await axios.get(`${API_BASE}/health`);
+    assert(res.status === 200 && res.data.success === true, 'Existing API starts and responds to /api/health');
+  } catch (err) {
+    assert(false, 'Existing API starts and responds to /api/health', err.message);
+  }
+
+  // ── TEST 2: Existing MySQL Database Connectivity ────────────────────────
+  try {
+    const res = await axios.get(`${API_BASE}/db-test`);
+    assert(res.status === 200 && res.data.success === true, 'Existing MySQL connection via /api/db-test operates normally');
+  } catch (err) {
+    assert(false, 'Existing MySQL connection via /api/db-test operates normally', err.message);
+  }
+
+  // ── TEST 3: Unauthenticated request to /api/graph/status rejected (401) ──
+  try {
+    await axios.get(`${API_BASE}/graph/status`);
+    assert(false, 'Unauthenticated GET /api/graph/status returns 401');
+  } catch (err) {
+    assert(err.response?.status === 401, 'Unauthenticated GET /api/graph/status returns 401');
+  }
+
+  // ── TEST 4: Authenticated request to /api/graph/status succeeds ─────────
+  try {
+    const res = await axios.get(`${API_BASE}/graph/status`, {
+      headers: { Authorization: `Bearer ${nurseToken}` }
+    });
+    assert(res.status === 200 && res.data.success === true && res.data.status !== undefined,
+      'Authenticated GET /api/graph/status returns valid health payload');
+  } catch (err) {
+    assert(false, 'Authenticated GET /api/graph/status returns valid health payload', err.message);
+  }
+
+  // ── TEST 5: Unauthenticated request to /api/graph/sync rejected (401) ────
+  try {
+    await axios.post(`${API_BASE}/graph/sync`);
+    assert(false, 'Unauthenticated POST /api/graph/sync returns 401');
+  } catch (err) {
+    assert(err.response?.status === 401, 'Unauthenticated POST /api/graph/sync returns 401');
+  }
+
+  // ── TEST 6: Non-Admin request to /api/graph/sync rejected (403) ─────────
+  try {
+    await axios.post(`${API_BASE}/graph/sync`, {}, {
+      headers: { Authorization: `Bearer ${nurseToken}` }
+    });
+    assert(false, 'Non-Admin (Nurse) POST /api/graph/sync returns 403');
+  } catch (err) {
+    assert(err.response?.status === 403, 'Non-Admin (Nurse) POST /api/graph/sync returns 403');
+  }
+
+  // ── TEST 7: Non-Admin request with Doctor role to /api/graph/sync rejected (403) ─
+  try {
+    await axios.post(`${API_BASE}/graph/sync`, {}, {
+      headers: { Authorization: `Bearer ${doctorToken}` }
+    });
+    assert(false, 'Non-Admin (Doctor) POST /api/graph/sync returns 403');
+  } catch (err) {
+    assert(err.response?.status === 403, 'Non-Admin (Doctor) POST /api/graph/sync returns 403');
+  }
+
+  // ── TEST 8: Unknown Unit ID returns 404 ──────────────────────────────────
+  try {
+    await axios.get(`${API_BASE}/graph/trace/unit/999999`, {
+      headers: { Authorization: `Bearer ${nurseToken}` }
+    });
+    assert(false, 'Unknown Unit ID returns 404');
+  } catch (err) {
+    assert(err.response?.status === 404, 'Unknown Unit ID returns 404');
+  }
+
+  // ── TEST 9: Unknown Donor ID returns 404 ─────────────────────────────────
+  try {
+    await axios.get(`${API_BASE}/graph/trace/donor/999999`, {
+      headers: { Authorization: `Bearer ${nurseToken}` }
+    });
+    assert(false, 'Unknown Donor ID returns 404');
+  } catch (err) {
+    assert(err.response?.status === 404, 'Unknown Donor ID returns 404');
+  }
+
+  // ── TEST 10: Zero-Donation Donor returns valid empty trace ──────────────
+  try {
+    // In test seed, donor 11 (Kenzo Tenma) has 0 donations
+    const res = await axios.get(`${API_BASE}/graph/trace/donor/11`, {
+      headers: { Authorization: `Bearer ${nurseToken}` }
+    });
+    assert(
+      res.status === 200 &&
+      res.data.success === true &&
+      res.data.data.donor.donor_id === 11 &&
+      res.data.data.totalDonations === 0 &&
+      Array.isArray(res.data.data.donations) &&
+      res.data.data.donations.length === 0,
+      'Zero-donation donor returns valid empty trace (donations = [])'
+    );
+  } catch (err) {
+    assert(false, 'Zero-donation donor returns valid empty trace', err.message);
+  }
+
+  // ── TEST 11: Privacy Audit: No PII stored in Graph Snapshot Queries ─────
+  try {
+    const graphSyncService = require('../services/graphSyncService');
+    // Ensure the service code does not query or map PII into Neo4j parameters
+    const code = require('fs').readFileSync(path.resolve(__dirname, '../services/graphSyncService.js'), 'utf8');
+    const hasNoPiiInCypher =
+      !code.includes('first_name: d.') &&
+      !code.includes('phone: d.') &&
+      !code.includes('email: d.') &&
+      !code.includes('street: d.');
+    assert(hasNoPiiInCypher, 'Service strictly excludes donor names, phone, email, and addresses from graph projection');
+  } catch (err) {
+    assert(false, 'Privacy Audit: No PII stored in Graph Snapshot Queries', err.message);
+  }
+
+  // ── LIVE NEO4J TESTS (If configured) ───────────────────────────────────
+  const isNeo4jConfigured = neo4jConfig.isConfigured();
+  if (isNeo4jConfigured) {
+    console.log('\n--- Running Live Neo4j Aura Tests ---');
+
+    // ── TEST 12: Admin-triggered Graph Sync ────────────────────────────────
+    let firstSyncResult = null;
+    try {
+      const res = await axios.post(`${API_BASE}/graph/sync`, {}, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+      firstSyncResult = res.data;
+      assert(
+        res.status === 200 &&
+        res.data.success === true &&
+        res.data.nodeCounts.total > 0 &&
+        res.data.relationshipCounts.total > 0,
+        `Admin full sync succeeded: ${res.data.nodeCounts.total} nodes, ${res.data.relationshipCounts.total} rels`
+      );
+    } catch (err) {
+      assert(false, 'Admin full sync succeeded', err.response?.data?.message || err.message);
+    }
+
+    // ── TEST 13: Sync Idempotency (Repeat sync produces exact same counts) ──
+    try {
+      const res = await axios.post(`${API_BASE}/graph/sync`, {}, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+      const secondSyncResult = res.data;
+      const isIdempotent =
+        firstSyncResult &&
+        secondSyncResult.nodeCounts.total === firstSyncResult.nodeCounts.total &&
+        secondSyncResult.relationshipCounts.total === firstSyncResult.relationshipCounts.total &&
+        secondSyncResult.nodeCounts.Donor === firstSyncResult.nodeCounts.Donor &&
+        secondSyncResult.nodeCounts.DonationEvent === firstSyncResult.nodeCounts.DonationEvent;
+      assert(isIdempotent, 'Repeated sync is idempotent: node & relationship counts identical with zero duplicates');
+    } catch (err) {
+      assert(false, 'Repeated sync is idempotent', err.response?.data?.message || err.message);
+    }
+
+    // ── TEST 14: Traceability Correctness (MySQL vs Neo4j) ─────────────────
+    try {
+      const res = await axios.get(`${API_BASE}/graph/trace/unit/1`, {
+        headers: { Authorization: `Bearer ${nurseToken}` }
+      });
+      const data = res.data.data;
+      const [mysqlUnits] = await pool.query('SELECT * FROM blood_unit WHERE unit_id = 1');
+      const [mysqlEvents] = await pool.query('SELECT * FROM donation_event WHERE unit_id = 1');
+      const [mysqlDonors] = await pool.query('SELECT * FROM donor WHERE donor_id = ?', [mysqlEvents[0]?.donor_id]);
+
+      const unitMatches = data.unit.unit_code === mysqlUnits[0].unit_code;
+      const donorMatches = data.donor.name.includes(mysqlDonors[0].first_name);
+      const hasBank = Boolean(data.bloodBank && data.bloodBank.name);
+
+      assert(unitMatches && donorMatches && hasBank,
+        'Trace by unit_id correctly correlates BloodUnit -> DonationEvent -> BloodBank & Donor across graph & MySQL');
+    } catch (err) {
+      assert(false, 'Traceability Correctness (MySQL vs Neo4j)', err.response?.data?.message || err.message);
+    }
+  } else {
+    console.log('\nℹ️ Neo4j Aura environment variables not set in .env. Skipping live Aura synchronization tests.');
+    console.log('✅ Offline resilience, RBAC, 401/403, and MySQL integration tests completed successfully.');
+  }
+
+  console.log(`\n====================================================`);
+  console.log(`TEST SUMMARY: ${passed} Passed, ${failed} Failed`);
+  console.log(`====================================================\n`);
+
+  if (failed > 0) {
+    process.exit(1);
+  }
+}
+
+// Start test
+runTests()
+  .then(() => process.exit(0))
+  .catch(err => {
+    console.error('Unhandled test failure:', err);
+    process.exit(1);
+  });
+
+================================================================================
+File: backend/server.js
+================================================================================
+require('dotenv').config();
+
+if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
+  console.error('FATAL: JWT_SECRET environment variable is missing or empty.');
+  process.exit(1);
+}
+
+const express    = require('express');
+const cors       = require('cors');
+const errorHandler = require('./middleware/errorHandler');
+
+const app = express();
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ── Health check ─────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, message: '🩸 Blood Bank API is running', timestamp: new Date() });
+});
+
+app.get('/api/db-test', async (req, res) => {
+  try {
+    const pool = require('./config/db');
+    const [rows] = await pool.query('SELECT 1 + 1 AS solution');
+    res.json({ success: true, message: 'Database connection successful!', result: rows[0].solution });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Database connection failed', error: error.message });
+  }
+});
+
+// ── Routes ────────────────────────────────────────────────────
+app.use('/api/auth',             require('./routes/authRoutes'));
+app.use('/api/dashboard',        require('./routes/dashboardRoutes'));
+app.use('/api/blood-banks',      require('./routes/bloodBankRoutes'));
+app.use('/api/staff',            require('./routes/staffRoutes'));
+app.use('/api/donors',           require('./routes/donorRoutes'));
+app.use('/api/receivers',        require('./routes/receiverRoutes'));
+app.use('/api/blood-units',      require('./routes/bloodUnitRoutes'));
+app.use('/api/donation-events',  require('./routes/donationEventRoutes'));
+app.use('/api/blood-tests',      require('./routes/bloodTestRoutes'));
+app.use('/api/blood-requests',   require('./routes/bloodRequestRoutes'));
+app.use('/api/sql',              require('./routes/sqlRoutes'));
+app.use('/api/db-verification', require('./routes/dbVerificationRoutes'));
+app.use('/api/graph',           require('./routes/graphRoutes'));
+
+// ── 404 handler ───────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: `Route ${req.url} not found` });
+});
+
+// ── Global error handler ──────────────────────────────────────
+app.use(errorHandler);
+
+// ── Start server ─────────────────────────────────────────────
+const PORT = process.env.PORT || 5000;
+const server = app.listen(PORT, () => {
+  console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📡 API base: http://localhost:${PORT}/api`);
+  console.log(`💡 Health:   http://localhost:${PORT}/api/health\n`);
+});
+
+module.exports = { app, server };
+
+================================================================================
+File: backend/package.json
+================================================================================
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "npx nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.20.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.3",
+    "neo4j-driver": "^6.2.0"
+  }
+}
+
+================================================================================
+File: backend/middleware/authMiddleware.js
+================================================================================
+const jwt = require('jsonwebtoken');
+
+const authMiddleware = (req, res, next) => {
+  const token = req.header('Authorization')?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (ex) {
+    res.status(401).json({ success: false, message: 'Invalid token.' });
+  }
+};
+
+module.exports = authMiddleware;
+
+================================================================================
+File: backend/middleware/roleMiddleware.js
+================================================================================
+const roleMiddleware = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res.status(403).json({ success: false, message: 'Access denied. No role found.' });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied. Insufficient permissions.' });
+    }
+
+    next();
+  };
+};
+
+module.exports = roleMiddleware;
+
+================================================================================
+File: backend/config/db.js
+================================================================================
+const mysql = require('mysql2/promise');
+const fs = require('fs');
+
+const dbConfig = {
+  host:     process.env.DB_HOST     || 'localhost',
+  port:     process.env.DB_PORT     || 3306,
+  database: process.env.DB_NAME     || 'blood_bank_db',
+  user:     process.env.DB_USER     || 'root',
+  password: process.env.DB_PASSWORD || '',
+  waitForConnections: true,
+  connectionLimit:    10,
+  queueLimit:         0,
+  timezone:           '+00:00',
+};
+
+if (process.env.DB_SSL_CA) {
+  dbConfig.ssl = {
+    rejectUnauthorized: true,
+    ca: fs.readFileSync(process.env.DB_SSL_CA)
+  };
+}
+
+const pool = mysql.createPool(dbConfig);
+
+// Test connection on startup
+pool.getConnection()
+  .then(conn => {
+    console.log('✅ MySQL connected successfully');
+    conn.release();
+  })
+  .catch(err => {
+    console.error('❌ MySQL connection failed:', err.message);
+    process.exit(1);
+  });
+
+module.exports = pool;

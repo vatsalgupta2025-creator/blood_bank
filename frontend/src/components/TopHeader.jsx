@@ -112,7 +112,7 @@ export default function TopHeader() {
             <span style={{
               fontSize: 20,
               fontWeight: 700,
-              color: '#F9F6F3',
+              color: isDarkMode ? '#F8FAFC' : '#0F172A',
               letterSpacing: '-0.02em',
               fontFamily: 'var(--font-display, inherit)',
             }}>
@@ -161,8 +161,8 @@ export default function TopHeader() {
                   gap: 4,
                   padding: '6px 8px',
                   borderRadius: 16,
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.05)',
+                  background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
+                  border: isDarkMode ? '1px solid rgba(203,213,225,0.25)' : '1px solid rgba(0,0,0,0.08)',
                 }}>
                   {navLinks.map(link => (
                     <NavLink
@@ -171,12 +171,18 @@ export default function TopHeader() {
                       style={({ isActive }) => ({
                         padding: '8px 14px',
                         fontSize: 13,
-                        fontWeight: isActive ? 600 : 450,
-                        color: isActive ? '#F9F6F3' : 'rgba(255,255,255,0.45)',
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive 
+                          ? (isDarkMode ? '#FFFFFF' : '#DC143C') 
+                          : (isDarkMode ? 'rgba(203, 213, 225, 0.75)' : '#475569'),
                         textDecoration: 'none',
                         borderRadius: 10,
-                        background: isActive ? 'rgba(220,20,60,0.12)' : 'transparent',
-                        border: isActive ? '1px solid rgba(220,20,60,0.2)' : '1px solid transparent',
+                        background: isActive 
+                          ? (isDarkMode ? 'rgba(220,20,60,0.2)' : 'rgba(220,20,60,0.1)') 
+                          : 'transparent',
+                        border: isActive 
+                          ? (isDarkMode ? '1px solid rgba(220,20,60,0.35)' : '1px solid rgba(220,20,60,0.2)') 
+                          : '1px solid transparent',
                         transition: 'all 0.2s ease',
                         whiteSpace: 'nowrap',
                       })}
@@ -186,17 +192,20 @@ export default function TopHeader() {
                   ))}
                 </nav>
 
-                {/* Mobile Drawer Rendering (Portal-like or absolute) */}
+                {/* Mobile Drawer Rendering */}
                 <div 
                   className={`mobile-nav-overlay ${isMobileNavOpen ? 'open' : ''}`}
                   onClick={() => setIsMobileNavOpen(false)}
                 ></div>
-                <div className={`mobile-nav-drawer ${isMobileNavOpen ? 'open' : ''}`}>
+                <div className={`mobile-nav-drawer ${isMobileNavOpen ? 'open' : ''}`} style={{
+                  background: isDarkMode ? '#08080A' : '#FFFFFF',
+                  borderLeft: isDarkMode ? '1px solid rgba(203,213,225,0.28)' : '1px solid rgba(0,0,0,0.1)',
+                }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>Menu</span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>Menu</span>
                     <button 
                       onClick={() => setIsMobileNavOpen(false)}
-                      style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: 8 }}
+                      style={{ background: 'transparent', border: 'none', color: isDarkMode ? '#CBD5E1' : '#475569', cursor: 'pointer', padding: 8 }}
                     >
                       <X size={24} />
                     </button>
@@ -209,12 +218,16 @@ export default function TopHeader() {
                         style={({ isActive }) => ({
                           padding: '14px 16px',
                           fontSize: 15,
-                          fontWeight: isActive ? 600 : 450,
-                          color: isActive ? '#F9F6F3' : 'rgba(255,255,255,0.6)',
+                          fontWeight: isActive ? 600 : 500,
+                          color: isActive 
+                            ? (isDarkMode ? '#FFFFFF' : '#DC143C') 
+                            : (isDarkMode ? 'rgba(203, 213, 225, 0.85)' : '#334155'),
                           textDecoration: 'none',
                           borderRadius: 12,
-                          background: isActive ? 'rgba(220,20,60,0.12)' : 'rgba(255,255,255,0.02)',
-                          border: isActive ? '1px solid rgba(220,20,60,0.2)' : '1px solid transparent',
+                          background: isActive 
+                            ? (isDarkMode ? 'rgba(220,20,60,0.2)' : 'rgba(220,20,60,0.08)') 
+                            : (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'),
+                          border: isActive ? '1px solid rgba(220,20,60,0.25)' : '1px solid transparent',
                         })}
                       >
                         {link.label}
@@ -243,22 +256,14 @@ export default function TopHeader() {
                 width: 38,
                 height: 38,
                 borderRadius: 10,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.04)',
-                color: 'rgba(255,255,255,0.5)',
+                border: isDarkMode ? '1px solid rgba(203,213,225,0.28)' : '1px solid rgba(0,0,0,0.1)',
+                background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                color: isDarkMode ? '#CBD5E1' : '#334155',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                e.currentTarget.style.color = '#F9F6F3';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
               }}
             >
               {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
@@ -302,22 +307,22 @@ export default function TopHeader() {
                 padding: '10px 16px',
                 fontSize: 13,
                 fontWeight: 600,
-                color: 'rgba(255,255,255,0.7)',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                color: isDarkMode ? 'rgba(203, 213, 225, 0.85)' : '#475569',
+                background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                border: isDarkMode ? '1px solid rgba(203, 213, 225, 0.25)' : '1px solid rgba(0,0,0,0.1)',
                 borderRadius: 10,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(220,20,60,0.2)';
-                e.currentTarget.style.color = 'white';
-                e.currentTarget.style.borderColor = 'rgba(220,20,60,0.5)';
+                e.currentTarget.style.background = isDarkMode ? 'rgba(220,20,60,0.2)' : 'rgba(220,20,60,0.08)';
+                e.currentTarget.style.color = isDarkMode ? '#FFFFFF' : '#DC143C';
+                e.currentTarget.style.borderColor = isDarkMode ? 'rgba(220,20,60,0.5)' : 'rgba(220,20,60,0.3)';
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+                e.currentTarget.style.color = isDarkMode ? 'rgba(203, 213, 225, 0.85)' : '#475569';
+                e.currentTarget.style.borderColor = isDarkMode ? '1px solid rgba(203, 213, 225, 0.25)' : '1px solid rgba(0,0,0,0.1)';
               }}
             >
               Log Out
@@ -330,9 +335,9 @@ export default function TopHeader() {
                 width: 38,
                 height: 38,
                 borderRadius: 10,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.04)',
-                color: '#F9F6F3',
+                border: isDarkMode ? '1px solid rgba(203,213,225,0.28)' : '1px solid rgba(0,0,0,0.1)',
+                background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                color: isDarkMode ? '#F8FAFC' : '#0F172A',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',

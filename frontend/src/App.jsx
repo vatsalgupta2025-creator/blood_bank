@@ -87,6 +87,7 @@ export default function App() {
       <ToastProvider>
         <Routes>
           {/* Public Routes */}
+          <Route path="/landing" element={<LoadingScreen onDone={() => window.location.href = user ? '/dashboard' : '/login'} />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={
             !user ? <LoginPage onLogin={(u) => setUser(u)} /> : <Navigate to="/dashboard" replace />
