@@ -144,6 +144,156 @@ function formatTime(val) {
   return String(val);
 }
 
+/**
+ * MySQL relational fallback for traceByUnitId.
+ * When Neo4j is unavailable, queries MySQL tables to reconstruct the full
+ * donor → event → unit → tests → bank lineage using foreign key joins.
+ * Returns the same shape as the Neo4j-powered response.
+ */
+async function mysqlFallbackForUnit(mysqlUnit) {
+  // Find donation event linked to this unit
+  const [eventRows] = await pool.query(
+    'SELECT event_id, donor_id, bank_id, unit_id, event_date, event_time, notes FROM donation_event WHERE unit_id = ?',
+    [mysqlUnit.unit_id]
+  );
+
+  let donationEvent = null;
+  let donorDisplay = null;
+  let bloodBank = null;
+  let bloodTests = [];
+
+  if (eventRows.length > 0) {
+    const ev = eventRows[0];
+    donationEvent = {
+      event_id: ev.event_id,
+      event_date: formatDate(ev.event_date),
+      event_time: formatTime(ev.event_time),
+      notes: ev.notes || ''
+    };
+
+    // Donor
+    if (ev.donor_id) {
+      const [donorRows] = await pool.query(
+        'SELECT donor_id, first_name, last_name, email, phone, blood_group FROM donor WHERE donor_id = ?',
+        [ev.donor_id]
+      );
+      if (donorRows.length > 0) {
+        const d = donorRows[0];
+        donorDisplay = {
+          donor_id: d.donor_id,
+          name: `${d.first_name} ${d.last_name}`,
+          email: d.email,
+          phone: d.phone,
+          blood_group: d.blood_group
+        };
+      }
+    }
+
+    // Blood Bank
+    const bankId = ev.bank_id || mysqlUnit.bank_id;
+    if (bankId) {
+      const [bankRows] = await pool.query(
+        'SELECT bank_id, name, city, state FROM blood_bank WHERE bank_id = ?',
+        [bankId]
+      );
+      if (bankRows.length > 0) {
+        bloodBank = bankRows[0];
+      }
+    }
+
+    // Blood Tests
+    const [testRows] = await pool.query(
+      'SELECT test_id, event_id, test_type, tested_date, result FROM blood_test WHERE event_id = ?',
+      [ev.event_id]
+    );
+    bloodTests = testRows.map(t => ({
+      test_id: t.test_id,
+      test_type: t.test_type,
+      tested_date: formatDate(t.tested_date),
+      result: t.result
+    }));
+  } else if (mysqlUnit.bank_id) {
+    // No donation event found, but unit has a bank_id
+    const [bankRows] = await pool.query(
+      'SELECT bank_id, name, city, state FROM blood_bank WHERE bank_id = ?',
+      [mysqlUnit.bank_id]
+    );
+    if (bankRows.length > 0) {
+      bloodBank = bankRows[0];
+    }
+  }
+
+  return { donationEvent, donor: donorDisplay, bloodBank, bloodTests };
+}
+
+/**
+ * MySQL relational fallback for traceByDonorId.
+ * When Neo4j is unavailable, queries MySQL tables to reconstruct the full
+ * donor → events → units → tests → banks lineage using foreign key joins.
+ */
+async function mysqlFallbackForDonor(donorId) {
+  const [eventRows] = await pool.query(
+    'SELECT event_id, donor_id, bank_id, unit_id, event_date, event_time, notes FROM donation_event WHERE donor_id = ? ORDER BY event_date DESC',
+    [donorId]
+  );
+
+  const donations = [];
+  for (const ev of eventRows) {
+    const donation = {
+      donationEvent: {
+        event_id: ev.event_id,
+        event_date: formatDate(ev.event_date),
+        event_time: formatTime(ev.event_time),
+        notes: ev.notes || ''
+      },
+      bloodBank: null,
+      bloodUnit: null,
+      bloodTests: []
+    };
+
+    // Blood Bank
+    if (ev.bank_id) {
+      const [bankRows] = await pool.query(
+        'SELECT bank_id, name, city, state FROM blood_bank WHERE bank_id = ?',
+        [ev.bank_id]
+      );
+      if (bankRows.length > 0) donation.bloodBank = bankRows[0];
+    }
+
+    // Blood Unit
+    if (ev.unit_id) {
+      const [unitRows] = await pool.query(
+        'SELECT unit_id, unit_code, blood_group, volume_ml, collected_date, expiry_date, status FROM blood_unit WHERE unit_id = ?',
+        [ev.unit_id]
+      );
+      if (unitRows.length > 0) {
+        const u = unitRows[0];
+        donation.bloodUnit = {
+          ...u,
+          collected_date: formatDate(u.collected_date),
+          expiry_date: formatDate(u.expiry_date)
+        };
+      }
+    }
+
+    // Blood Tests
+    const [testRows] = await pool.query(
+      'SELECT test_id, event_id, test_type, tested_date, result FROM blood_test WHERE event_id = ?',
+      [ev.event_id]
+    );
+    donation.bloodTests = testRows.map(t => ({
+      test_id: t.test_id,
+      test_type: t.test_type,
+      tested_date: formatDate(t.tested_date),
+      result: t.result
+    }));
+
+    donations.push(donation);
+  }
+
+  return donations;
+}
+
 // Ensure database constraints exist on Neo4j schema
 async function ensureSchemaConstraints(session) {
   const constraints = [
@@ -510,15 +660,13 @@ async function traceByUnitId(unitId) {
       session = getSession(neo4j.session.READ);
     } catch (driverErr) {
       console.warn('[traceByUnitId] Neo4j driver unavailable:', driverErr.message);
+      const fallback = await mysqlFallbackForUnit(mysqlUnit);
       return {
         unit: mysqlUnit,
-        donationEvent: null,
-        donor: null,
-        bloodBank: null,
-        bloodTests: [],
+        ...fallback,
         projectionSynced: false,
         projectionAvailable: false,
-        message: 'Graph projection unavailable. Unit data sourced from MySQL only.'
+        message: 'Neo4j unavailable. Lineage reconstructed from MySQL relational data.'
       };
     }
 
@@ -540,29 +688,25 @@ async function traceByUnitId(unitId) {
     } catch (queryErr) {
       // Network failure, auth error, or Aura timeout – do not leak details.
       console.warn('[traceByUnitId] Neo4j query failed:', queryErr.message);
+      const fallback = await mysqlFallbackForUnit(mysqlUnit);
       return {
         unit: mysqlUnit,
-        donationEvent: null,
-        donor: null,
-        bloodBank: null,
-        bloodTests: [],
+        ...fallback,
         projectionSynced: false,
         projectionAvailable: false,
-        message: 'Graph projection query failed. Unit data sourced from MySQL only.'
+        message: 'Neo4j query failed. Lineage reconstructed from MySQL relational data.'
       };
     }
 
     if (cypherResult.records.length === 0) {
       // The BloodUnit node is absent from the projection – not yet synced.
+      const fallback = await mysqlFallbackForUnit(mysqlUnit);
       return {
         unit: mysqlUnit,
-        donationEvent: null,
-        donor: null,
-        bloodBank: null,
-        bloodTests: [],
+        ...fallback,
         projectionSynced: false,
         projectionAvailable: true,
-        message: 'Blood unit not yet present in graph projection. Run /api/graph/sync.'
+        message: 'Blood unit not yet in graph projection. Lineage reconstructed from MySQL.'
       };
     }
 
@@ -660,12 +804,14 @@ async function traceByDonorId(donorId) {
       session = getSession(neo4j.session.READ);
     } catch (driverErr) {
       console.warn('[traceByDonorId] Neo4j driver unavailable:', driverErr.message);
+      const donations = await mysqlFallbackForDonor(numericDonorId);
       return {
         donor: donorDisplay,
         projectionSynced: false,
         projectionAvailable: false,
-        donations: null,  // null signals "unknown", not confirmed zero
-        message: 'Graph projection unavailable. Donor identity confirmed via MySQL; donation graph data not available.'
+        totalDonations: donations.length,
+        donations,
+        message: 'Neo4j unavailable. Donation lineage reconstructed from MySQL relational data.'
       };
     }
 
@@ -687,12 +833,14 @@ async function traceByDonorId(donorId) {
     } catch (queryErr) {
       // Network failure, auth error, or Aura timeout – do not leak details.
       console.warn('[traceByDonorId] Neo4j query failed:', queryErr.message);
+      const donations = await mysqlFallbackForDonor(numericDonorId);
       return {
         donor: donorDisplay,
         projectionSynced: false,
         projectionAvailable: false,
-        donations: null,  // null signals "unknown", not confirmed zero
-        message: 'Graph projection query failed. Donor identity confirmed via MySQL; donation graph data not available.'
+        totalDonations: donations.length,
+        donations,
+        message: 'Neo4j query failed. Donation lineage reconstructed from MySQL relational data.'
       };
     }
 
@@ -701,12 +849,14 @@ async function traceByDonorId(donorId) {
     // empty donation history (rows returned but all donationEvent = null).
     const donorNodeAbsent = cypherResult.records.length === 0;
     if (donorNodeAbsent) {
+      const donations = await mysqlFallbackForDonor(numericDonorId);
       return {
         donor: donorDisplay,
         projectionSynced: false,
         projectionAvailable: true,
-        donations: null,  // null signals "unknown", not confirmed zero
-        message: 'Donor node absent from graph projection. Run /api/graph/sync to populate.'
+        totalDonations: donations.length,
+        donations,
+        message: 'Donor not yet in graph projection. Lineage reconstructed from MySQL.'
       };
     }
 
