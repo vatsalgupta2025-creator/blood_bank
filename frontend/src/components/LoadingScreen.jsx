@@ -887,11 +887,7 @@ export default function LoadingScreen({ onDone }) {
           </div>
           <p>Give blood. Keep life moving.</p>
 
-          <div className="landing-stats-row">
-            <span className="stat-pill">🩸 1 Donation = 3 Lives Saved</span>
-            <span className="stat-pill">💉 450ml Life Transfusion</span>
-            <span className="stat-pill">🏥 Real-Time Inventory Network</span>
-          </div>
+
         </div>
 
         {/* Visual Layer Accents */}

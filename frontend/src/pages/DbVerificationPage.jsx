@@ -72,13 +72,13 @@ export default function DbVerificationPage() {
         textAlign: 'center',
         maxWidth: 600,
         margin: '40px auto',
-        background: 'rgba(20, 20, 26, 0.7)',
+        background: 'var(--bg-card)',
         borderRadius: 16,
-        border: '1px solid rgba(220, 20, 60, 0.2)'
+        border: '1px solid var(--border)'
       }}>
         <AlertTriangle size={48} color="#DC143C" style={{ margin: '0 auto 16px' }} />
-        <h2 style={{ fontSize: 22, color: '#F9F6F3', marginBottom: 8 }}>Admin Access Required</h2>
-        <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+        <h2 style={{ fontSize: 22, color: 'var(--text-primary)', marginBottom: 8 }}>Admin Access Required</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
           Database Verification is restricted to Administrator accounts only.
         </p>
       </div>
@@ -98,10 +98,10 @@ export default function DbVerificationPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <ShieldCheck size={22} color="#DC143C" />
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#F9F6F3', margin: 0 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
               Live MySQL Database Verification
             </h2>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
               Directly query MySQL table records to verify CRUD operation persistence.
             </p>
           </div>
@@ -109,7 +109,7 @@ export default function DbVerificationPage() {
 
         <form onSubmit={handleVerify} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, alignItems: 'end' }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
               Select Entity / Table
             </label>
             <select
@@ -133,11 +133,12 @@ export default function DbVerificationPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
               Record ID <span style={{ fontSize: 11, color: '#DC143C' }}>({currentEntityConfig.pk})</span>
             </label>
             <input
               type="text"
+              className="dbv-input"
               value={recordId}
               onChange={(e) => setRecordId(e.target.value)}
               placeholder={`Enter ${currentEntityConfig.pk} e.g. 1`}
@@ -145,9 +146,6 @@ export default function DbVerificationPage() {
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: 10,
-                background: '#0a0a0d',
-                color: '#F9F6F3',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
                 fontSize: 14,
                 outline: 'none'
               }}
@@ -183,6 +181,7 @@ export default function DbVerificationPage() {
             <button
               type="button"
               onClick={handleClear}
+              className="btn btn-ghost"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -191,9 +190,6 @@ export default function DbVerificationPage() {
                 padding: '11px 16px',
                 fontSize: 14,
                 fontWeight: 500,
-                color: 'rgba(255, 255, 255, 0.7)',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: 10,
                 cursor: 'pointer'
               }}
@@ -243,9 +239,9 @@ export default function DbVerificationPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {verificationResult.found ? (
-                <CheckCircle size={22} color="#4ADE80" />
+                <CheckCircle size={22} color="#16A34A" />
               ) : (
-                <AlertTriangle size={22} color="#FF6B81" />
+                <AlertTriangle size={22} color="#DC143C" />
               )}
               <div>
                 <span style={{
@@ -253,11 +249,11 @@ export default function DbVerificationPage() {
                   fontWeight: 700,
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
-                  color: verificationResult.found ? '#4ADE80' : '#FF6B81'
+                  color: verificationResult.found ? '#16A34A' : '#DC143C'
                 }}>
                   {verificationResult.found ? 'RECORD VERIFIED IN MYSQL DATABASE' : 'RECORD NOT FOUND'}
                 </span>
-                <div style={{ fontSize: 14, color: '#F9F6F3', marginTop: 2 }}>
+                <div style={{ fontSize: 14, color: 'var(--text-primary)', marginTop: 2 }}>
                   Entity: <code style={{ color: '#DC143C' }}>{verificationResult.entity}</code> | PK Column: <code style={{ color: '#DC143C' }}>{verificationResult.pkColumn}</code> = <strong>{verificationResult.id}</strong>
                 </div>
               </div>
@@ -269,7 +265,7 @@ export default function DbVerificationPage() {
               padding: '6px 14px',
               borderRadius: 20,
               background: verificationResult.found ? 'rgba(74, 222, 128, 0.12)' : 'rgba(220, 20, 60, 0.12)',
-              color: verificationResult.found ? '#4ADE80' : '#FF6B81',
+              color: verificationResult.found ? '#16A34A' : '#DC143C',
               border: verificationResult.found ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(220, 20, 60, 0.3)'
             }}>
               {verificationResult.found ? 'Active Record' : 'Deleted / Nonexistent'}
@@ -279,7 +275,7 @@ export default function DbVerificationPage() {
           {/* Record Details */}
           {verificationResult.found ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
                 Fetched Row Fields (Direct MySQL Query):
               </h3>
 
@@ -300,9 +296,9 @@ export default function DbVerificationPage() {
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#DC143C', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       {key}
                     </div>
-                    <div style={{ fontSize: 14, color: '#F9F6F3', marginTop: 4, wordBreak: 'break-all' }}>
+                    <div style={{ fontSize: 14, color: 'var(--text-primary)', marginTop: 4, wordBreak: 'break-all' }}>
                       {value === null || value === undefined ? (
-                        <em style={{ color: 'rgba(255,255,255,0.3)' }}>NULL</em>
+                        <em style={{ color: 'var(--text-muted)' }}>NULL</em>
                       ) : typeof value === 'boolean' ? (
                         value ? 'TRUE' : 'FALSE'
                       ) : (
@@ -320,13 +316,13 @@ export default function DbVerificationPage() {
               borderRadius: 12,
               padding: '20px',
               textAlign: 'center',
-              color: '#FF6B81',
+              color: '#DC143C',
               fontSize: 14
             }}>
               <p style={{ margin: 0, fontWeight: 600 }}>
                 {verificationResult.message || 'Record not found — verified deleted from database.'}
               </p>
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
                 Direct query <code>SELECT * FROM {verificationResult.entity} WHERE {verificationResult.pkColumn} = {verificationResult.id}</code> returned 0 rows.
               </p>
             </div>
@@ -335,34 +331,32 @@ export default function DbVerificationPage() {
       )}
 
       {/* Demo Workflow Guide */}
-      <div style={{
-        background: 'rgba(20, 20, 26, 0.7)',
+      <div className="dbv-info-card" style={{
         borderRadius: 16,
-        border: '1px solid rgba(255, 255, 255, 0.06)',
         padding: '20px 24px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Info size={18} color="#DC143C" />
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#F9F6F3', margin: 0 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
             Faculty Verification Demo Guide
           </h3>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.04)' }}>
+          <div className="dbv-guide-box" style={{ padding: '14px', borderRadius: 10 }}>
             <strong style={{ color: '#DC143C', fontSize: 12, display: 'block', marginBottom: 4 }}>1. CREATE TEST</strong>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               Add a record from Donors/Receivers. Copy the returned ID and verify here to prove it persisted to MySQL.
             </span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.04)' }}>
+          <div className="dbv-guide-box" style={{ padding: '14px', borderRadius: 10 }}>
             <strong style={{ color: '#DC143C', fontSize: 12, display: 'block', marginBottom: 4 }}>2. UPDATE TEST</strong>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               Edit the record on the main page. Re-verify the ID here to confirm updated column values in MySQL.
             </span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.04)' }}>
+          <div className="dbv-guide-box" style={{ padding: '14px', borderRadius: 10 }}>
             <strong style={{ color: '#DC143C', fontSize: 12, display: 'block', marginBottom: 4 }}>3. DELETE TEST</strong>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               Delete the record. Re-verify the ID here to confirm "Record not found — verified deleted from database".
             </span>
           </div>

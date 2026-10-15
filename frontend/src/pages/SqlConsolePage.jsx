@@ -64,13 +64,13 @@ export default function SqlConsolePage() {
         textAlign: 'center',
         maxWidth: 600,
         margin: '40px auto',
-        background: 'rgba(20, 20, 26, 0.7)',
+        background: 'var(--bg-card)',
         borderRadius: 16,
-        border: '1px solid rgba(220, 20, 60, 0.2)'
+        border: '1px solid var(--border)'
       }}>
         <AlertCircle size={48} color="#DC143C" style={{ margin: '0 auto 16px' }} />
-        <h2 style={{ fontSize: 22, color: '#F9F6F3', marginBottom: 8 }}>Admin Access Required</h2>
-        <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+        <h2 style={{ fontSize: 22, color: 'var(--text-primary)', marginBottom: 8 }}>Admin Access Required</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
           The SQL Console is restricted to Administrator accounts only.
         </p>
       </div>
@@ -82,18 +82,18 @@ export default function SqlConsolePage() {
       {/* Top Banner / Examples */}
       <div className="sql-banner-card" style={{
         borderRadius: 16,
-        padding: '20px 24px',
-        backdropFilter: 'blur(12px)'
+        padding: '20px 24px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <Terminal size={20} color="#DC143C" />
-          <h2 style={{ fontSize: 16, fontWeight: 600, color: '#F9F6F3', margin: 0 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
             Example Queries
           </h2>
           <span style={{
             fontSize: 11,
-            color: 'rgba(255,255,255,0.4)',
-            background: 'rgba(255,255,255,0.06)',
+            color: 'var(--text-muted)',
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border)',
             padding: '2px 8px',
             borderRadius: 10
           }}>
@@ -106,16 +106,13 @@ export default function SqlConsolePage() {
             <button
               key={idx}
               onClick={() => { setQuery(ex.sql); setError(''); }}
+              className={`sql-query-chip ${query === ex.sql ? 'active' : ''}`}
               style={{
                 fontSize: 12,
                 fontWeight: 500,
                 padding: '7px 14px',
                 borderRadius: 8,
-                background: query === ex.sql ? 'rgba(220, 20, 60, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: query === ex.sql ? '1px solid rgba(220, 20, 60, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
-                color: query === ex.sql ? '#FF6B81' : 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6
@@ -137,10 +134,10 @@ export default function SqlConsolePage() {
         gap: 16
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <label style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)' }}>
+          <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
             SQL Query Terminal <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>(SELECT queries only)</span>
           </label>
-          <span style={{ fontSize: 12, color: '#4ADE80', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 12, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
             <CheckCircle2 size={13} /> Read-Only Mode Active
           </span>
         </div>
@@ -190,6 +187,7 @@ export default function SqlConsolePage() {
 
           <button
             onClick={handleClear}
+            className="btn btn-ghost"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -197,12 +195,8 @@ export default function SqlConsolePage() {
               padding: '10px 18px',
               fontSize: 14,
               fontWeight: 500,
-              color: 'rgba(255, 255, 255, 0.7)',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: 10,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              cursor: 'pointer'
             }}
           >
             <RotateCcw size={15} />
@@ -239,17 +233,17 @@ export default function SqlConsolePage() {
           gap: 16
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#F9F6F3', margin: 0 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
               Query Execution Result
             </h3>
             <span style={{
               fontSize: 12,
               fontWeight: 600,
-              color: '#4ADE80',
-              background: 'rgba(74, 222, 128, 0.1)',
+              color: 'var(--success)',
+              background: 'var(--success-bg)',
               padding: '4px 12px',
               borderRadius: 12,
-              border: '1px solid rgba(74, 222, 128, 0.2)'
+              border: '1px solid rgba(16, 185, 129, 0.2)'
             }}>
               {results.rowCount} {results.rowCount === 1 ? 'row' : 'rows'} returned
             </span>
@@ -259,23 +253,23 @@ export default function SqlConsolePage() {
             <div style={{
               padding: '32px',
               textAlign: 'center',
-              color: 'rgba(255, 255, 255, 0.4)',
+              color: 'var(--text-muted)',
               fontSize: 14
             }}>
               No records returned for this query.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255, 255, 255, 0.04)', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border)' }}>
                     {results.columns.map((col, idx) => (
                       <th
                         key={idx}
                         style={{
                           padding: '12px 16px',
                           fontWeight: 600,
-                          color: '#DC143C',
+                          color: 'var(--crimson)',
                           fontFamily: 'monospace',
                           whiteSpace: 'nowrap'
                         }}
@@ -290,19 +284,19 @@ export default function SqlConsolePage() {
                     <tr
                       key={rowIdx}
                       style={{
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-                        background: rowIdx % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.015)'
+                        borderBottom: '1px solid var(--border)',
+                        background: rowIdx % 2 === 0 ? 'transparent' : 'rgba(0, 0, 0, 0.02)'
                       }}
                     >
                       {results.columns.map((col, colIdx) => {
                         const val = row[col];
                         let displayVal = val;
-                        if (val === null || val === undefined) displayVal = <span style={{ color: 'rgba(255,255,255,0.25)', italic: true }}>NULL</span>;
+                        if (val === null || val === undefined) displayVal = <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>NULL</span>;
                         else if (typeof val === 'object') displayVal = JSON.stringify(val);
                         else displayVal = String(val);
 
                         return (
-                          <td key={colIdx} style={{ padding: '10px 16px', color: 'rgba(255, 255, 255, 0.85)', whiteSpace: 'nowrap' }}>
+                          <td key={colIdx} style={{ padding: '10px 16px', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                             {displayVal}
                           </td>
                         );

@@ -332,12 +332,9 @@ body {
 
 /* ── Top Bar ─────────────────────────────────────────────────── */
 .topbar {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: var(--z-raised);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   padding: var(--space-4) var(--space-8);
   display: flex;
@@ -1896,6 +1893,86 @@ td strong, .td-primary { color: var(--text-primary); font-weight: 500; }
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9), 0 0 16px rgba(203, 213, 225, 0.18) !important;
 }
 
+/* ── SQL Console & DB Verification Sections (Base / Light Mode) ── */
+.sql-banner-card,
+.sql-editor-card,
+.sql-results-card,
+.dbv-control-card,
+.dbv-results-card,
+.dbv-info-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+}
+
+.sql-textarea {
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.sql-textarea:focus {
+  background: #FFFFFF;
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.12);
+}
+
+.sql-query-chip {
+  background: #F1F5F9;
+  border: 1px solid var(--border);
+  color: #334155;
+  transition: all 0.2s ease;
+}
+
+.sql-query-chip:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.sql-query-chip.active {
+  background: rgba(220, 20, 60, 0.1);
+  border-color: rgba(220, 20, 60, 0.4);
+  color: var(--crimson);
+}
+
+.dbv-select {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.dbv-select:focus {
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.12);
+}
+
+.dbv-input {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.dbv-input:focus {
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.12);
+}
+
+.dbv-field-box {
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.dbv-guide-box {
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
 /* ── Dark SQL Console & DB Verification Sections ── */
 .dark .sql-banner-card,
 .dark .sql-editor-card,
@@ -1925,12 +2002,29 @@ td strong, .td-primary { color: var(--text-primary); font-weight: 500; }
   color: #CBD5E1 !important;
 }
 
+.dark .sql-query-chip.active {
+  background: rgba(220, 20, 60, 0.2) !important;
+  border-color: rgba(220, 20, 60, 0.5) !important;
+  color: #FF6B81 !important;
+}
+
 .dark .dbv-field-box {
   background: #060608 !important;
   border: 1px solid rgba(203, 213, 225, 0.22) !important;
 }
 
+.dark .dbv-guide-box {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
 .dark .dbv-select {
+  background: #060608 !important;
+  border: 1px solid rgba(203, 213, 225, 0.28) !important;
+  color: #F8FAFC !important;
+}
+
+.dark .dbv-input {
   background: #060608 !important;
   border: 1px solid rgba(203, 213, 225, 0.28) !important;
   color: #F8FAFC !important;
