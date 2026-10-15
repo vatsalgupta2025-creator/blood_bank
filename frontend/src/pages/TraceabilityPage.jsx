@@ -303,6 +303,23 @@ export default function TraceabilityPage() {
     }
   }, []);
 
+  // Adjust force repulsion and link distance for clear visual separation
+  useEffect(() => {
+    if (graphRef.current && graphData) {
+      try {
+        const charge = graphRef.current.d3Force('charge');
+        if (charge && typeof charge.strength === 'function') {
+          charge.strength(-400);
+        }
+        const link = graphRef.current.d3Force('link');
+        if (link && typeof link.distance === 'function') {
+          link.distance(100);
+        }
+        graphRef.current.d3ReheatSimulation();
+      } catch {}
+    }
+  }, [graphData]);
+
   // Node paint
   const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
     const style = NODE_STYLES[node.type] || NODE_STYLES.BloodUnit;
