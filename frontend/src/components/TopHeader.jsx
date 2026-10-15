@@ -112,11 +112,13 @@ export default function TopHeader() {
           {/* Center: Navigation */}
           {(() => {
             let isAdmin = false;
+            let canAccessTraceability = false;
             try {
               const userStr = localStorage.getItem('bb_user');
               if (userStr) {
                 const u = JSON.parse(userStr);
                 if (u.role === 'Admin') isAdmin = true;
+                if (['Admin', 'Doctor', 'Nurse'].includes(u.role)) canAccessTraceability = true;
               }
             } catch {}
 
@@ -129,6 +131,9 @@ export default function TopHeader() {
               { to: '/blood-requests',   label: 'Requests' },
               { to: '/donation-events',  label: 'Events' },
               { to: '/blood-tests',      label: 'Tests' },
+              ...(canAccessTraceability ? [
+                { to: '/traceability',     label: 'Traceability' }
+              ] : []),
               { to: '/staff',            label: 'Staff' },
               ...(isAdmin ? [
                 { to: '/sql-console',      label: 'SQL Console' },

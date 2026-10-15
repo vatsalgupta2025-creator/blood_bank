@@ -96,5 +96,11 @@ export const deleteStaffMember   = (id)     => api.delete(`/staff/${id}`);
 export const executeSqlQuery     = (query)        => api.post('/sql/query', { query });
 export const verifyDbRecord      = (entity, id)   => api.get(`/db-verification/${entity}/${id}`);
 
+// Graph Traceability (Neo4j Aura)
+export const getGraphStatus      = ()             => api.get('/graph/status');
+export const traceBloodUnit      = (id)           => api.get(`/graph/trace/unit/${id}`);
+export const traceDonor          = (id)            => api.get(`/graph/trace/donor/${id}`);
+export const syncGraph           = ()             => api.post('/graph/sync');
+
 export default api;
 

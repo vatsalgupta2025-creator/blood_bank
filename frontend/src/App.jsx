@@ -13,6 +13,7 @@ import DonationEventsPage from './pages/DonationEventsPage';
 import StaffPage          from './pages/StaffPage';
 import SqlConsolePage     from './pages/SqlConsolePage';
 import DbVerificationPage  from './pages/DbVerificationPage';
+import TraceabilityPage   from './pages/TraceabilityPage';
 import LoadingScreen      from './components/LoadingScreen';
 
 import LoginPage          from './pages/LoginPage';
@@ -127,6 +128,11 @@ export default function App() {
             <Route path="/blood-tests" element={
               <PageLayout title="Blood Tests" subtitle="Screening and test results">
                 <BloodTestsPage />
+              </PageLayout>
+            } />
+            <Route path="/traceability" element={
+              <PageLayout title="Blood Traceability" subtitle="Neo4j Aura Blood Donation & Lineage Explorer">
+                <TraceabilityPage />
               </PageLayout>
             } />
             <Route path="/staff" element={
