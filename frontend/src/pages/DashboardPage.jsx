@@ -81,10 +81,10 @@ export default function DashboardPage() {
   if (!data) return null;
 
   return (
-    <div style={{ margin: 0, padding: 0, width: '100%', background: '#0F0F12' }}>
+    <div className="dash-root-wrapper" style={{ margin: 0, padding: 0, width: '100%' }}>
 
       {/* ── HERO SECTION ──────────────────────────────────────────── */}
-      <section style={{
+      <section className="dash-hero-section" style={{
         position: 'relative',
         minHeight: '85vh',
         display: 'flex',
@@ -93,7 +93,7 @@ export default function DashboardPage() {
         width: '100%',
       }}>
         {/* Background gradient */}
-        <div style={{
+        <div className="dash-hero-bg" style={{
           position: 'absolute', inset: 0,
           background: 'radial-gradient(ellipse 80% 60% at 70% 50%, rgba(139,0,0,0.22) 0%, transparent 70%), radial-gradient(ellipse 50% 80% at 20% 80%, rgba(90,0,0,0.15) 0%, transparent 60%), #0F0F12',
         }} />
@@ -239,10 +239,7 @@ export default function DashboardPage() {
       </section>
 
       {/* ── STATISTICS STRIP ──────────────────────────────────────── */}
-      <section style={{
-        background: '#16161A',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      <section className="dash-stats-section" style={{
         padding: '24px 0',
         width: '100%',
       }}>
@@ -273,7 +270,7 @@ export default function DashboardPage() {
       </section>
 
       {/* ── DETAILED OVERVIEW SECTIONS ─────────────────────────────── */}
-      <section style={{ padding: '64px 40px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+      <section className="dash-overview-section" style={{ padding: '64px 40px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
         <div className="dash-2col-grid">
           
           {/* Blood Inventory Overview */}
@@ -289,14 +286,13 @@ export default function DashboardPage() {
                 const count = data.bloodGroupInventory.find(g => g.blood_group === group)?.count || 0;
                 const isLow = count < 20;
                 return (
-                  <div key={group} style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${isLow ? 'rgba(220,20,60,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                  <div key={group} className="dash-inventory-card" style={{
                     borderRadius: 16,
                     padding: 16,
                     textAlign: 'center',
                     position: 'relative',
                     overflow: 'hidden',
+                    borderColor: isLow ? 'rgba(220,20,60,0.5)' : undefined,
                   }}>
                     {isLow && (
                       <div style={{
@@ -330,9 +326,7 @@ export default function DashboardPage() {
                   No urgent requests pending.
                 </div>
               ) : requests.map(req => (
-                <div key={req.request_id} style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                <div key={req.request_id} className="dash-urgent-card" style={{
                   borderRadius: 12,
                   padding: '16px 20px',
                   display: 'flex',
@@ -372,9 +366,7 @@ export default function DashboardPage() {
                   No recent activities recorded.
                 </div>
               ) : events.map(evt => (
-                <div key={evt.event_id} style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                <div key={evt.event_id} className="dash-activity-card" style={{
                   borderRadius: 12,
                   padding: '16px 20px',
                   display: 'flex',
@@ -408,9 +400,7 @@ export default function DashboardPage() {
             </div>
             <div className="dash-connected-banks-grid">
               {banks.map(bank => (
-                <div key={bank.bank_id} style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                <div key={bank.bank_id} className="dash-bank-card" style={{
                   borderRadius: 16,
                   padding: 20,
                   display: 'flex',
@@ -435,8 +425,7 @@ export default function DashboardPage() {
       </section>
 
       {/* ── MODULES GRID ──────────────────────────────────────────── */}
-      <section id="modules" style={{
-        background: '#0F0F12',
+      <section id="modules" className="dash-modules-section" style={{
         padding: '80px 40px',
         width: '100%',
       }}>
@@ -469,9 +458,8 @@ export default function DashboardPage() {
                 <div
                   key={mod.to}
                   onClick={() => navigate(mod.to)}
+                  className="dash-module-card"
                   style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.06)',
                     borderRadius: 20,
                     padding: 28,
                     cursor: 'pointer',

@@ -10,12 +10,31 @@ export default function TopHeader() {
   const location = useLocation();
   const toast = useToast();
   
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('bb_theme');
+      if (saved) return saved === 'dark';
+      return typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+    } catch {
+      return false;
+    }
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [banks, setBanks] = useState([]);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({ donor_name: '', bank_id: '', event_date: '' });
+
+  // Sync theme changes with DOM and localStorage
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      try { localStorage.setItem('bb_theme', 'dark'); } catch {}
+    } else {
+      document.documentElement.classList.remove('dark');
+      try { localStorage.setItem('bb_theme', 'light'); } catch {}
+    }
+  }, [isDarkMode]);
 
   // Close mobile nav on route change
   useEffect(() => {
@@ -23,8 +42,7 @@ export default function TopHeader() {
   }, [location.pathname]);
 
   const toggleTheme = () => {
-    document.documentElement.classList.toggle('dark');
-    setIsDarkMode(!isDarkMode);
+    setIsDarkMode(prev => !prev);
   };
 
   const openBookingModal = async () => {
@@ -58,14 +76,7 @@ export default function TopHeader() {
 
   return (
     <>
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        background: 'rgba(15, 15, 18, 0.95)',
-        backdropFilter: 'blur(24px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
+      <header className="top-navbar-header">
         {/* Main navbar */}
         <div className="top-header-container" style={{
           maxWidth: 1400,
@@ -224,8 +235,10 @@ export default function TopHeader() {
             flexShrink: 0,
           }}>
             <button
-              className="action-icon-btn"
+              className="action-icon-btn theme-toggle-btn"
               onClick={toggleTheme}
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label="Toggle dark mode"
               style={{
                 width: 38,
                 height: 38,

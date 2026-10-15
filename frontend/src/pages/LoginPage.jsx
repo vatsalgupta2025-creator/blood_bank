@@ -25,7 +25,7 @@ export default function LoginPage({ onLogin }) {
   };
 
   return (
-    <div style={{
+    <div className="login-page-bg" style={{
       minHeight: '100vh',
       background: 'radial-gradient(ellipse at 60% 0%, #ffe0e0 0%, #fff0f0 40%, #fff8f8 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -69,7 +69,7 @@ export default function LoginPage({ onLogin }) {
         </div>
 
         {/* Card */}
-        <div style={{
+        <div className="login-card" style={{
           background: '#fff', borderRadius: 20,
           boxShadow: '0 8px 48px rgba(180,0,30,0.12)',
           border: '1px solid #f0cccc', padding: '40px 36px',

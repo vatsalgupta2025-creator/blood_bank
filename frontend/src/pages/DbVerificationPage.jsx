@@ -88,10 +88,8 @@ export default function DbVerificationPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Control Card */}
-      <div style={{
-        background: 'rgba(20, 20, 26, 0.9)',
+      <div className="dbv-control-card" style={{
         borderRadius: 16,
-        border: '1px solid rgba(255, 255, 255, 0.08)',
         padding: '24px',
         display: 'flex',
         flexDirection: 'column',
@@ -115,15 +113,13 @@ export default function DbVerificationPage() {
               Select Entity / Table
             </label>
             <select
+              className="dbv-select"
               value={selectedEntity}
               onChange={(e) => { setSelectedEntity(e.target.value); setVerificationResult(null); setError(''); }}
               style={{
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: 10,
-                background: '#0a0a0d',
-                color: '#F9F6F3',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
                 fontSize: 14,
                 outline: 'none'
               }}
@@ -227,8 +223,7 @@ export default function DbVerificationPage() {
 
       {/* Verification Output Card */}
       {verificationResult && (
-        <div style={{
-          background: 'rgba(20, 20, 26, 0.9)',
+        <div className="dbv-results-card" style={{
           borderRadius: 16,
           border: verificationResult.found
             ? '1px solid rgba(74, 222, 128, 0.3)'
@@ -296,11 +291,10 @@ export default function DbVerificationPage() {
                 {Object.entries(verificationResult.data).map(([key, value]) => (
                   <div
                     key={key}
+                    className="dbv-field-box"
                     style={{
-                      background: '#0a0a0d',
                       padding: '12px 16px',
                       borderRadius: 10,
-                      border: '1px solid rgba(255,255,255,0.06)'
                     }}
                   >
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#DC143C', textTransform: 'uppercase', letterSpacing: '0.04em' }}>

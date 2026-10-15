@@ -80,10 +80,8 @@ export default function SqlConsolePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Top Banner / Examples */}
-      <div style={{
-        background: 'rgba(20, 20, 26, 0.8)',
+      <div className="sql-banner-card" style={{
         borderRadius: 16,
-        border: '1px solid rgba(255, 255, 255, 0.08)',
         padding: '20px 24px',
         backdropFilter: 'blur(12px)'
       }}>
@@ -131,10 +129,8 @@ export default function SqlConsolePage() {
       </div>
 
       {/* Editor Card */}
-      <div style={{
-        background: 'rgba(20, 20, 26, 0.9)',
+      <div className="sql-editor-card" style={{
         borderRadius: 16,
-        border: '1px solid rgba(255, 255, 255, 0.08)',
         padding: '24px',
         display: 'flex',
         flexDirection: 'column',
@@ -150,6 +146,7 @@ export default function SqlConsolePage() {
         </div>
 
         <textarea
+          className="sql-textarea"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Enter SELECT query here..."
@@ -160,9 +157,6 @@ export default function SqlConsolePage() {
             fontSize: 14,
             padding: '16px',
             borderRadius: 10,
-            background: '#0a0a0d',
-            color: '#F9F6F3',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
             outline: 'none',
             resize: 'vertical',
             lineHeight: '1.5'
@@ -237,10 +231,8 @@ export default function SqlConsolePage() {
 
       {/* Results Card */}
       {results && (
-        <div style={{
-          background: 'rgba(20, 20, 26, 0.9)',
+        <div className="sql-results-card" style={{
           borderRadius: 16,
-          border: '1px solid rgba(255, 255, 255, 0.08)',
           padding: '24px',
           display: 'flex',
           flexDirection: 'column',
