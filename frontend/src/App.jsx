@@ -130,11 +130,7 @@ export default function App() {
                 <BloodTestsPage />
               </PageLayout>
             } />
-            <Route path="/traceability" element={
-              <PageLayout title="Blood Traceability" subtitle="Neo4j Aura Blood Donation & Lineage Explorer">
-                <TraceabilityPage />
-              </PageLayout>
-            } />
+            <Route path="/traceability" element={<TraceabilityPage />} />
             <Route path="/staff" element={
               <PageLayout title="Staff" subtitle="Blood bank staff and personnel">
                 <StaffPage />

@@ -275,7 +275,12 @@ export default function TraceabilityPage() {
 
       setTimeout(() => {
         if (graphRef.current) {
-          graphRef.current.zoomToFit(400, 80);
+          graphRef.current.zoomToFit(400, 70);
+          setTimeout(() => {
+            if (graphRef.current && graphRef.current.zoom() > 2.0) {
+              graphRef.current.zoom(1.8, 300);
+            }
+          }, 420);
         }
       }, 600);
 
@@ -289,7 +294,12 @@ export default function TraceabilityPage() {
 
   const handleFitView = useCallback(() => {
     if (graphRef.current) {
-      graphRef.current.zoomToFit(400, 80);
+      graphRef.current.zoomToFit(400, 70);
+      setTimeout(() => {
+        if (graphRef.current && graphRef.current.zoom() > 2.0) {
+          graphRef.current.zoom(1.8, 300);
+        }
+      }, 420);
     }
   }, []);
 
@@ -298,6 +308,8 @@ export default function TraceabilityPage() {
     const style = NODE_STYLES[node.type] || NODE_STYLES.BloodUnit;
     const r = style.radius;
     const isSelected = selectedNode && selectedNode.id === node.id;
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#E2E8F0' : '#1F2937';
 
     // Selected glow
     if (isSelected) {
@@ -308,11 +320,11 @@ export default function TraceabilityPage() {
     // Circle
     ctx.beginPath();
     ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-    ctx.fillStyle = isSelected ? style.color : style.color + 'DD';
+    ctx.fillStyle = isSelected ? style.color : style.color + 'EE';
     ctx.fill();
 
-    // White ring
-    ctx.strokeStyle = isSelected ? '#fff' : style.color + '40';
+    // Ring
+    ctx.strokeStyle = isSelected ? '#FFFFFF' : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)');
     ctx.lineWidth = isSelected ? 2.5 : 1.5;
     ctx.stroke();
 
@@ -325,16 +337,17 @@ export default function TraceabilityPage() {
                     node.type === 'BloodTest' ? 'T' :
                     node.type === 'BloodBank' ? 'B' :
                     node.type === 'Donor' ? 'D' : '?';
-    ctx.font = `bold ${r * 0.9}px Inter, system-ui, sans-serif`;
+    ctx.font = `bold ${Math.round(r * 0.9)}px Inter, system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#FFFFFF';
     ctx.fillText(initial, node.x, node.y + 0.5);
 
     // Label below
-    const labelSize = Math.max(9, 10 / globalScale);
-    ctx.font = `${isSelected ? '600' : '400'} ${labelSize}px Inter, system-ui, sans-serif`;
-    ctx.fillStyle = isSelected ? 'var(--text-primary, #E2E8F0)' : 'var(--text-secondary, rgba(255,255,255,0.6))';
+    const effectiveScale = Math.max(globalScale || 1, 0.4);
+    const labelSize = Math.min(14, Math.max(8, 10 / effectiveScale));
+    ctx.font = `${isSelected ? '700' : '500'} ${labelSize}px Inter, system-ui, sans-serif`;
+    ctx.fillStyle = isSelected ? (isDark ? '#FFFFFF' : '#111827') : textColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
@@ -345,13 +358,14 @@ export default function TraceabilityPage() {
 
   // Link paint
   const linkCanvasObject = useCallback((link, ctx, globalScale) => {
-    const color = LINK_COLORS[link.label] || '#555';
+    const color = LINK_COLORS[link.label] || '#6B7280';
     const start = link.source;
     const end = link.target;
     if (!start || !end || typeof start.x !== 'number') return;
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
 
-    ctx.strokeStyle = color + '80';
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = color + (isDark ? '80' : '99');
+    ctx.lineWidth = 1.4;
     ctx.setLineDash([]);
     ctx.beginPath();
     ctx.moveTo(start.x, start.y);
@@ -370,7 +384,7 @@ export default function TraceabilityPage() {
     const arrowLen = 6;
     const angle = Math.atan2(dy, dx);
 
-    ctx.fillStyle = color + 'CC';
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.moveTo(arrowX, arrowY);
     ctx.lineTo(arrowX - arrowLen * Math.cos(angle - Math.PI / 7), arrowY - arrowLen * Math.sin(angle - Math.PI / 7));
@@ -381,13 +395,14 @@ export default function TraceabilityPage() {
     // Relationship label
     const midX = (start.x + end.x) / 2;
     const midY = (start.y + end.y) / 2;
-    const fontSize = Math.max(7, 8 / globalScale);
-    ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
-    ctx.fillStyle = color + 'AA';
+    const effectiveScale = Math.max(globalScale || 1, 0.4);
+    const fontSize = Math.min(12, Math.max(7, 8.5 / effectiveScale));
+    ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+    ctx.fillStyle = isDark ? color : (color === '#F59E0B' ? '#B45309' : color);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const relLabel = (link.label || '').replace(/_/g, ' ');
-    ctx.fillText(relLabel, midX, midY - 4 / globalScale);
+    ctx.fillText(relLabel, midX, midY - 4 / effectiveScale);
   }, []);
 
   // Access denied
@@ -531,6 +546,8 @@ export default function TraceabilityPage() {
                 width={dimensions.width}
                 height={dimensions.height}
                 backgroundColor="rgba(0,0,0,0)"
+                minZoom={0.3}
+                maxZoom={2.5}
                 nodeCanvasObject={nodeCanvasObject}
                 nodePointerAreaPaint={(node, color, ctx) => {
                   const r = (NODE_STYLES[node.type]?.radius || 14) + 4;
