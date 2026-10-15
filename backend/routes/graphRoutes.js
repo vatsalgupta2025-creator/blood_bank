@@ -18,7 +18,10 @@ router.get('/trace/unit/:id', auth, authorize('Admin', 'Doctor', 'Nurse'), graph
 // Technician is explicitly excluded (consistent with donorRoutes.js access policy).
 router.get('/trace/donor/:id', auth, authorize('Admin', 'Doctor', 'Nurse'), graphController.traceDonor);
 
-// Convenient alias for unit trace - same access restriction as /trace/unit/:id
-router.get('/trace/:id', auth, authorize('Admin', 'Doctor', 'Nurse'), graphController.traceUnit);
+// GET /api/graph/expand/:type/:id - Expand neighbor nodes & relationships (Bloom exploration)
+router.get('/expand/:type/:id', auth, authorize('Admin', 'Doctor', 'Nurse'), graphController.expandNode);
+
+// GET /api/graph/details/:type/:id - Comprehensive entity details from authoritative MySQL
+router.get('/details/:type/:id', auth, authorize('Admin', 'Doctor', 'Nurse'), graphController.getNodeDetails);
 
 module.exports = router;

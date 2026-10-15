@@ -51,20 +51,40 @@ exports.getStatus = async (req, res, next) => {
   }
 };
 
+function maskEmail(email) {
+  if (!email || !email.includes('@')) return '***@***.***';
+  const [user, domain] = email.split('@');
+  return `${user[0]}***@${domain}`;
+}
+
+function maskPhone(phone) {
+  if (!phone) return '***';
+  if (phone.length <= 4) return '***';
+  return phone.slice(0, 3) + '******' + phone.slice(-4);
+}
+
 /**
- * Strips PII fields (email, phone) from the donor sub-object
- * for non-Admin roles. Admin receives the full object.
- * Doctor and Nurse match the same field policy as donorRoutes.js
- * (read access to donor records, but contact PII is Admin-restricted
- * in the trace context where it is surfaced alongside graph data).
+ * Strips/masks PII fields (email, phone, street) for non-Admin roles.
+ * Admin receives the full unmasked object.
+ * Doctor and Nurse retain all clinical/medical attributes (name, blood_group, dob, age,
+ * gender, total_donations, last_donation, is_eligible, city, state) but contact PII is masked.
  */
 function applyDonorPiiPolicy(donorObj, role) {
   if (!donorObj) return donorObj;
-  if (role === 'Admin') return donorObj;
-  // Doctor and Nurse: omit contact PII; blood_group and name are retained
-  // as they are medically relevant and already visible through donorRoutes.
-  const { email, phone, ...safe } = donorObj; // eslint-disable-line no-unused-vars
-  return safe;
+  if (role === 'Admin') {
+    return {
+      ...donorObj,
+      piiRestricted: false
+    };
+  }
+  // Doctor and Nurse: mask direct contact PII while preserving clinical metadata
+  return {
+    ...donorObj,
+    email: donorObj.email ? maskEmail(donorObj.email) : null,
+    phone: donorObj.phone ? maskPhone(donorObj.phone) : null,
+    street: '[Protected — Admin Access Required]',
+    piiRestricted: true
+  };
 }
 
 /**
@@ -131,5 +151,80 @@ exports.traceDonor = async (req, res, next) => {
       success: false,
       message: 'Failed to trace donor.'
     });
+  }
+};
+
+/**
+ * Admin, Doctor, Nurse: Expand a node's neighboring relationships in the graph.
+ * GET /api/graph/expand/:type/:id
+ */
+exports.expandNode = async (req, res, next) => {
+  try {
+    const { type, id } = req.params;
+    const role = req.user && req.user.role;
+    const result = await graphSyncService.expandNode(type, id);
+
+    // Apply PII policy to all donor nodes
+    const sanitizedNodes = result.nodes.map(n => {
+      if (n.type === 'Donor' && n.props) {
+        return {
+          ...n,
+          props: applyDonorPiiPolicy(n.props, role)
+        };
+      }
+      return n;
+    });
+
+    let sanitizedCenter = result.centerEntity;
+    if (result.centerEntity && (type.toLowerCase() === 'donor' || result.centerEntity.donor_id)) {
+      sanitizedCenter = applyDonorPiiPolicy(result.centerEntity, role);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        nodes: sanitizedNodes,
+        links: result.links,
+        source: result.source,
+        centerEntity: sanitizedCenter
+      }
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Expand node error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to expand graph node.' });
+  }
+};
+
+/**
+ * Admin, Doctor, Nurse: Get comprehensive authoritative details for a graph entity.
+ * GET /api/graph/details/:type/:id
+ */
+exports.getNodeDetails = async (req, res, next) => {
+  try {
+    const { type, id } = req.params;
+    const role = req.user && req.user.role;
+    const details = await graphSyncService.getNodeDetails(type, id);
+
+    let sanitized = { ...details };
+    if (sanitized.type === 'Donor' && sanitized.data) {
+      sanitized.data = applyDonorPiiPolicy(sanitized.data, role);
+    }
+    if (sanitized.donor) {
+      sanitized.donor = applyDonorPiiPolicy(sanitized.donor, role);
+    }
+
+    res.json({
+      success: true,
+      data: sanitized
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Get node details error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to retrieve entity details.' });
   }
 };

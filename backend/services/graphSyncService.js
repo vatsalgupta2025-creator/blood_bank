@@ -145,10 +145,127 @@ function formatTime(val) {
 }
 
 /**
+ * Authoritative MySQL Entity Fetchers — enriched with full relational metadata
+ */
+async function fetchFullDonorDetails(donorId) {
+  if (!donorId) return null;
+  try {
+    const [rows] = await pool.query(`
+      SELECT donor_id, first_name, last_name, dob, gender, blood_group,
+             phone, email, street, city, state,
+             total_donations, last_donation, is_eligible, created_at,
+             TIMESTAMPDIFF(YEAR, dob, CURDATE()) AS age
+      FROM donor
+      WHERE donor_id = ?
+    `, [donorId]);
+
+    if (rows.length === 0) return null;
+    const d = rows[0];
+    return {
+      donor_id: d.donor_id,
+      first_name: d.first_name,
+      last_name: d.last_name,
+      name: `${d.first_name || ''} ${d.last_name || ''}`.trim(),
+      dob: formatDate(d.dob),
+      age: d.age != null ? Number(d.age) : null,
+      gender: d.gender,
+      blood_group: d.blood_group,
+      phone: d.phone,
+      email: d.email,
+      street: d.street,
+      city: d.city,
+      state: d.state,
+      total_donations: d.total_donations != null ? Number(d.total_donations) : 0,
+      last_donation: formatDate(d.last_donation),
+      is_eligible: Boolean(d.is_eligible),
+      created_at: formatDate(d.created_at)
+    };
+  } catch (err) {
+    console.warn(`[fetchFullDonorDetails] Error fetching donor #${donorId}:`, err.message);
+    return null;
+  }
+}
+
+async function fetchFullBankDetails(bankId) {
+  if (!bankId) return null;
+  try {
+    const [rows] = await pool.query(`
+      SELECT bank_id, name, address, city, state, phone, email, capacity, established
+      FROM blood_bank
+      WHERE bank_id = ?
+    `, [bankId]);
+    if (rows.length === 0) return null;
+    const b = rows[0];
+    return {
+      ...b,
+      established: formatDate(b.established)
+    };
+  } catch (err) {
+    console.warn(`[fetchFullBankDetails] Error fetching bank #${bankId}:`, err.message);
+    return null;
+  }
+}
+
+async function fetchFullUnitDetails(unitId) {
+  if (!unitId) return null;
+  try {
+    const [rows] = await pool.query(`
+      SELECT bu.unit_id, bu.bank_id, bu.unit_code, bu.blood_group,
+             bu.volume_ml, bu.collected_date, bu.expiry_date, bu.status,
+             bu.storage_temp,
+             bb.name AS bank_name, bb.city AS bank_city
+      FROM blood_unit bu
+      LEFT JOIN blood_bank bb ON bb.bank_id = bu.bank_id
+      WHERE bu.unit_id = ?
+    `, [unitId]);
+    if (rows.length === 0) return null;
+    const u = rows[0];
+    return {
+      ...u,
+      collected_date: formatDate(u.collected_date),
+      expiry_date: formatDate(u.expiry_date)
+    };
+  } catch (err) {
+    console.warn(`[fetchFullUnitDetails] Error fetching unit #${unitId}:`, err.message);
+    return null;
+  }
+}
+
+async function fetchFullEventDetails(eventId) {
+  if (!eventId) return null;
+  try {
+    const [rows] = await pool.query(`
+      SELECT de.event_id, de.donor_id, de.bank_id, de.unit_id,
+             de.event_date, de.event_time, de.staff_id, de.notes,
+             bb.name AS bank_name, bu.unit_code,
+             CONCAT(d.first_name, ' ', d.last_name) AS donor_name,
+             d.blood_group AS donor_blood_group,
+             CONCAT(s.first_name, ' ', s.last_name) AS staff_name
+      FROM donation_event de
+      LEFT JOIN blood_bank bb ON bb.bank_id = de.bank_id
+      LEFT JOIN blood_unit bu ON bu.unit_id = de.unit_id
+      LEFT JOIN donor d ON d.donor_id = de.donor_id
+      LEFT JOIN staff s ON s.staff_id = de.staff_id
+      WHERE de.event_id = ?
+    `, [eventId]);
+    if (rows.length === 0) return null;
+    const ev = rows[0];
+    return {
+      ...ev,
+      event_date: formatDate(ev.event_date),
+      event_time: formatTime(ev.event_time)
+    };
+  } catch (err) {
+    console.warn(`[fetchFullEventDetails] Error fetching event #${eventId}:`, err.message);
+    return null;
+  }
+}
+
+/**
  * MySQL relational fallback for traceByUnitId.
  * When Neo4j is unavailable, queries MySQL tables to reconstruct the full
  * donor → event → unit → tests → bank lineage using foreign key joins.
- * Returns the same shape as the Neo4j-powered response.
+ * Returns the same shape as the Neo4j-powered response, fully enriched.
  */
 async function mysqlFallbackForUnit(mysqlUnit) {
   // Find donation event linked to this unit
@@ -164,7 +281,7 @@ async function mysqlFallbackForUnit(mysqlUnit) {
 
   if (eventRows.length > 0) {
     const ev = eventRows[0];
-    donationEvent = {
+    donationEvent = await fetchFullEventDetails(ev.event_id) || {
       event_id: ev.event_id,
       event_date: formatDate(ev.event_date),
       event_time: formatTime(ev.event_time),
@@ -173,32 +290,13 @@ async function mysqlFallbackForUnit(mysqlUnit) {
 
     // Donor
     if (ev.donor_id) {
-      const [donorRows] = await pool.query(
-        'SELECT donor_id, first_name, last_name, email, phone, blood_group FROM donor WHERE donor_id = ?',
-        [ev.donor_id]
-      );
-      if (donorRows.length > 0) {
-        const d = donorRows[0];
-        donorDisplay = {
-          donor_id: d.donor_id,
-          name: `${d.first_name} ${d.last_name}`,
-          email: d.email,
-          phone: d.phone,
-          blood_group: d.blood_group
-        };
-      }
+      donorDisplay = await fetchFullDonorDetails(ev.donor_id);
     }
 
     // Blood Bank
     const bankId = ev.bank_id || mysqlUnit.bank_id;
     if (bankId) {
-      const [bankRows] = await pool.query(
-        'SELECT bank_id, name, city, state FROM blood_bank WHERE bank_id = ?',
-        [bankId]
-      );
-      if (bankRows.length > 0) {
-        bloodBank = bankRows[0];
-      }
+      bloodBank = await fetchFullBankDetails(bankId);
     }
 
     // Blood Tests
@@ -213,17 +311,13 @@ async function mysqlFallbackForUnit(mysqlUnit) {
       result: t.result
     }));
   } else if (mysqlUnit.bank_id) {
-    // No donation event found, but unit has a bank_id
-    const [bankRows] = await pool.query(
-      'SELECT bank_id, name, city, state FROM blood_bank WHERE bank_id = ?',
-      [mysqlUnit.bank_id]
-    );
-    if (bankRows.length > 0) {
-      bloodBank = bankRows[0];
-    }
+    bloodBank = await fetchFullBankDetails(mysqlUnit.bank_id);
   }
 
-  return { donationEvent, donor: donorDisplay, bloodBank, bloodTests };
+  // Enrich unit itself
+  const enrichedUnit = await fetchFullUnitDetails(mysqlUnit.unit_id) || mysqlUnit;
+
+  return { unit: enrichedUnit, donationEvent, donor: donorDisplay, bloodBank, bloodTests };
 }
 
 /**
@@ -240,7 +334,7 @@ async function mysqlFallbackForDonor(donorId) {
   const donations = [];
   for (const ev of eventRows) {
     const donation = {
-      donationEvent: {
+      donationEvent: await fetchFullEventDetails(ev.event_id) || {
         event_id: ev.event_id,
         event_date: formatDate(ev.event_date),
         event_time: formatTime(ev.event_time),
@@ -253,27 +347,12 @@ async function mysqlFallbackForDonor(donorId) {
 
     // Blood Bank
     if (ev.bank_id) {
-      const [bankRows] = await pool.query(
-        'SELECT bank_id, name, city, state FROM blood_bank WHERE bank_id = ?',
-        [ev.bank_id]
-      );
-      if (bankRows.length > 0) donation.bloodBank = bankRows[0];
+      donation.bloodBank = await fetchFullBankDetails(ev.bank_id);
     }
 
     // Blood Unit
     if (ev.unit_id) {
-      const [unitRows] = await pool.query(
-        'SELECT unit_id, unit_code, blood_group, volume_ml, collected_date, expiry_date, status FROM blood_unit WHERE unit_id = ?',
-        [ev.unit_id]
-      );
-      if (unitRows.length > 0) {
-        const u = unitRows[0];
-        donation.bloodUnit = {
-          ...u,
-          collected_date: formatDate(u.collected_date),
-          expiry_date: formatDate(u.expiry_date)
-        };
-      }
+      donation.bloodUnit = await fetchFullUnitDetails(ev.unit_id);
     }
 
     // Blood Tests
@@ -720,35 +799,35 @@ async function traceByUnitId(unitId) {
 
     let donorDisplay = null;
     if (donorId) {
-      // Fetch donor display info from the authoritative MySQL source.
-      // email and phone are included here; the controller applies
-      // role-based PII policy before sending to the client.
-      const [donorRows] = await pool.query(
-        'SELECT donor_id, first_name, last_name, email, phone, blood_group FROM donor WHERE donor_id = ?',
-        [donorId]
-      );
-      if (donorRows.length > 0) {
-        const d = donorRows[0];
-        donorDisplay = {
-          donor_id: d.donor_id,
-          name: `${d.first_name} ${d.last_name}`,
-          email: d.email,
-          phone: d.phone,
-          blood_group: d.blood_group
-        };
-      } else {
-        donorDisplay = {
-          donor_id: donorId,
-          blood_group: donorBloodGroup
-        };
+      donorDisplay = await fetchFullDonorDetails(donorId);
+      if (!donorDisplay) {
+        donorDisplay = { donor_id: donorId, blood_group: donorBloodGroup };
       }
     }
 
+    let bankDisplay = bankNode;
+    if (bankNode && bankNode.bank_id) {
+      const fullBank = await fetchFullBankDetails(bankNode.bank_id);
+      if (fullBank) bankDisplay = { ...bankNode, ...fullBank };
+    }
+
+    let unitDisplay = unitNode || mysqlUnit;
+    if (unitDisplay && unitDisplay.unit_id) {
+      const fullUnit = await fetchFullUnitDetails(unitDisplay.unit_id);
+      if (fullUnit) unitDisplay = { ...unitDisplay, ...fullUnit };
+    }
+
+    let eventDisplay = eventNode;
+    if (eventNode && eventNode.event_id) {
+      const fullEv = await fetchFullEventDetails(eventNode.event_id);
+      if (fullEv) eventDisplay = { ...eventNode, ...fullEv };
+    }
+
     return {
-      unit: unitNode || mysqlUnit,
-      donationEvent: eventNode,
+      unit: unitDisplay,
+      donationEvent: eventDisplay,
       donor: donorDisplay,
-      bloodBank: bankNode,
+      bloodBank: bankDisplay,
       bloodTests: tests,
       projectionSynced: true,
       projectionAvailable: true
@@ -775,31 +854,15 @@ async function traceByDonorId(donorId) {
   }
 
   // Authoritative check in MySQL
-  const [donorRows] = await pool.query(
-    'SELECT donor_id, first_name, last_name, email, phone, blood_group FROM donor WHERE donor_id = ?',
-    [numericDonorId]
-  );
-
-  if (donorRows.length === 0) {
+  const donorDisplay = await fetchFullDonorDetails(numericDonorId);
+  if (!donorDisplay) {
     const err = new Error(`Donor ID ${numericDonorId} not found.`);
     err.statusCode = 404;
     throw err;
   }
 
-  const mysqlDonorRow = donorRows[0];
-  const donorDisplay = {
-    donor_id: mysqlDonorRow.donor_id,
-    name: `${mysqlDonorRow.first_name} ${mysqlDonorRow.last_name}`,
-    email: mysqlDonorRow.email,
-    phone: mysqlDonorRow.phone,
-    blood_group: mysqlDonorRow.blood_group
-  };
-
   let session = null;
   try {
-    // Attempt to open a session – driver not configured → offline mode.
-    // IMPORTANT: returning totalDonations:0 with projectionSynced:false
-    // must never be interpreted as a confirmed "no donations" result.
     try {
       session = getSession(neo4j.session.READ);
     } catch (driverErr) {
@@ -831,7 +894,6 @@ async function traceByDonorId(donorId) {
                tests AS bloodTests
       `, { donorId: safeInt(numericDonorId) });
     } catch (queryErr) {
-      // Network failure, auth error, or Aura timeout – do not leak details.
       console.warn('[traceByDonorId] Neo4j query failed:', queryErr.message);
       const donations = await mysqlFallbackForDonor(numericDonorId);
       return {
@@ -844,9 +906,6 @@ async function traceByDonorId(donorId) {
       };
     }
 
-    // If the Donor node is missing from the projection the query returns
-    // zero rows (no MATCH on d:Donor).  Distinguish from a confirmed
-    // empty donation history (rows returned but all donationEvent = null).
     const donorNodeAbsent = cypherResult.records.length === 0;
     if (donorNodeAbsent) {
       const donations = await mysqlFallbackForDonor(numericDonorId);
@@ -864,11 +923,19 @@ async function traceByDonorId(donorId) {
     for (const record of cypherResult.records) {
       const eventNode = toNative(record.get('donationEvent'));
       if (eventNode) {
+        const bankNode = toNative(record.get('bloodBank'));
+        const unitNode = toNative(record.get('bloodUnit'));
+        const tests = toNative(record.get('bloodTests')) || [];
+
+        const fullEvent = eventNode.event_id ? await fetchFullEventDetails(eventNode.event_id) : null;
+        const fullBank = bankNode?.bank_id ? await fetchFullBankDetails(bankNode.bank_id) : null;
+        const fullUnit = unitNode?.unit_id ? await fetchFullUnitDetails(unitNode.unit_id) : null;
+
         donations.push({
-          donationEvent: eventNode,
-          bloodBank: toNative(record.get('bloodBank')),
-          bloodUnit: toNative(record.get('bloodUnit')),
-          bloodTests: toNative(record.get('bloodTests')) || []
+          donationEvent: fullEvent ? { ...eventNode, ...fullEvent } : eventNode,
+          bloodBank: fullBank ? { ...bankNode, ...fullBank } : bankNode,
+          bloodUnit: fullUnit ? { ...unitNode, ...fullUnit } : unitNode,
+          bloodTests: tests
         });
       }
     }
@@ -887,9 +954,479 @@ async function traceByDonorId(donorId) {
   }
 }
 
+/**
+ * Expand a node's neighboring relationships in the graph.
+ * Returns connected nodes & links suitable for merging into Bloom-style explorer.
+ */
+async function expandNode(type, id) {
+  const normType = String(type).toLowerCase();
+  const numId = Number(id);
+  if (!numId || isNaN(numId)) {
+    const err = new Error(`Invalid ${type} ID`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let session = null;
+  let useNeo4j = false;
+  try {
+    session = getSession(neo4j.session.READ);
+    const testRes = await session.run('RETURN 1 AS connected');
+    useNeo4j = testRes.records.length > 0;
+  } catch {
+    useNeo4j = false;
+  }
+
+  const nodes = [];
+  const links = [];
+  const seenNodes = new Set();
+  const seenLinks = new Set();
+
+  function addNode(nodeId, nodeType, label, props) {
+    if (seenNodes.has(nodeId)) return;
+    seenNodes.add(nodeId);
+    nodes.push({ id: nodeId, type: nodeType, label, props: props || {} });
+  }
+
+  function addLink(source, target, label) {
+    const linkKey = `${source}->${label}->${target}`;
+    if (seenLinks.has(linkKey)) return;
+    seenLinks.add(linkKey);
+    links.push({ source, target, label });
+  }
+
+  let centerEntity = null;
+
+  if (normType === 'donor') {
+    const donor = await fetchFullDonorDetails(numId);
+    if (!donor) {
+      const err = new Error(`Donor #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    centerEntity = donor;
+    addNode(`donor-${donor.donor_id}`, 'Donor', donor.name || `Donor #${donor.donor_id}`, donor);
+
+    const [events] = await pool.query(`
+      SELECT de.event_id, de.donor_id, de.bank_id, de.unit_id, de.event_date, de.event_time, de.notes
+      FROM donation_event de
+      WHERE de.donor_id = ?
+      ORDER BY de.event_date DESC
+    `, [numId]);
+
+    for (const ev of events) {
+      const evFull = await fetchFullEventDetails(ev.event_id);
+      addNode(`event-${ev.event_id}`, 'DonationEvent', `Event #${ev.event_id}`, evFull || ev);
+      addLink(`donor-${numId}`, `event-${ev.event_id}`, 'DONATES');
+
+      if (ev.bank_id) {
+        const bank = await fetchFullBankDetails(ev.bank_id);
+        if (bank) {
+          addNode(`bank-${bank.bank_id}`, 'BloodBank', bank.name, bank);
+          addLink(`event-${ev.event_id}`, `bank-${bank.bank_id}`, 'RECEIVED_AT');
+        }
+      }
+
+      if (ev.unit_id) {
+        const unit = await fetchFullUnitDetails(ev.unit_id);
+        if (unit) {
+          addNode(`unit-${unit.unit_id}`, 'BloodUnit', unit.unit_code || `Unit #${unit.unit_id}`, unit);
+          addLink(`event-${ev.event_id}`, `unit-${unit.unit_id}`, 'GENERATES');
+        }
+      }
+
+      const [tests] = await pool.query(
+        'SELECT test_id, event_id, test_type, tested_date, result FROM blood_test WHERE event_id = ?',
+        [ev.event_id]
+      );
+      for (const t of tests) {
+        addNode(`test-${t.test_id}`, 'BloodTest', `${t.test_type}: ${t.result}`, {
+          ...t,
+          tested_date: formatDate(t.tested_date)
+        });
+        addLink(`event-${ev.event_id}`, `test-${t.test_id}`, 'HAS_TEST');
+      }
+    }
+  } else if (normType === 'bank' || normType === 'bloodbank') {
+    const bank = await fetchFullBankDetails(numId);
+    if (!bank) {
+      const err = new Error(`Blood Bank #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    centerEntity = bank;
+    addNode(`bank-${bank.bank_id}`, 'BloodBank', bank.name, bank);
+
+    const [events] = await pool.query(`
+      SELECT de.event_id, de.donor_id, de.bank_id, de.unit_id, de.event_date, de.event_time, de.notes
+      FROM donation_event de
+      WHERE de.bank_id = ?
+      ORDER BY de.event_date DESC
+      LIMIT 10
+    `, [numId]);
+
+    for (const ev of events) {
+      const evFull = await fetchFullEventDetails(ev.event_id);
+      addNode(`event-${ev.event_id}`, 'DonationEvent', `Event #${ev.event_id}`, evFull || ev);
+      addLink(`event-${ev.event_id}`, `bank-${bank.bank_id}`, 'RECEIVED_AT');
+
+      if (ev.donor_id) {
+        const donor = await fetchFullDonorDetails(ev.donor_id);
+        if (donor) {
+          addNode(`donor-${donor.donor_id}`, 'Donor', donor.name, donor);
+          addLink(`donor-${donor.donor_id}`, `event-${ev.event_id}`, 'DONATES');
+        }
+      }
+
+      if (ev.unit_id) {
+        const unit = await fetchFullUnitDetails(ev.unit_id);
+        if (unit) {
+          addNode(`unit-${unit.unit_id}`, 'BloodUnit', unit.unit_code || `Unit #${unit.unit_id}`, unit);
+          addLink(`event-${ev.event_id}`, `unit-${unit.unit_id}`, 'GENERATES');
+        }
+      }
+
+      const [tests] = await pool.query(
+        'SELECT test_id, event_id, test_type, tested_date, result FROM blood_test WHERE event_id = ?',
+        [ev.event_id]
+      );
+      for (const t of tests) {
+        addNode(`test-${t.test_id}`, 'BloodTest', `${t.test_type}: ${t.result}`, {
+          ...t,
+          tested_date: formatDate(t.tested_date)
+        });
+        addLink(`event-${ev.event_id}`, `test-${t.test_id}`, 'HAS_TEST');
+      }
+    }
+  } else if (normType === 'unit' || normType === 'bloodunit') {
+    const trace = await traceByUnitId(numId);
+    centerEntity = trace.unit;
+    if (trace.unit) {
+      addNode(`unit-${trace.unit.unit_id}`, 'BloodUnit', trace.unit.unit_code || `Unit #${trace.unit.unit_id}`, trace.unit);
+    }
+    if (trace.donationEvent) {
+      addNode(`event-${trace.donationEvent.event_id}`, 'DonationEvent', `Event #${trace.donationEvent.event_id}`, trace.donationEvent);
+      if (trace.unit) addLink(`event-${trace.donationEvent.event_id}`, `unit-${trace.unit.unit_id}`, 'GENERATES');
+    }
+    if (trace.donor) {
+      addNode(`donor-${trace.donor.donor_id}`, 'Donor', trace.donor.name || `Donor #${trace.donor.donor_id}`, trace.donor);
+      if (trace.donationEvent) addLink(`donor-${trace.donor.donor_id}`, `event-${trace.donationEvent.event_id}`, 'DONATES');
+    }
+    if (trace.bloodBank) {
+      addNode(`bank-${trace.bloodBank.bank_id}`, 'BloodBank', trace.bloodBank.name, trace.bloodBank);
+      if (trace.donationEvent) addLink(`event-${trace.donationEvent.event_id}`, `bank-${trace.bloodBank.bank_id}`, 'RECEIVED_AT');
+    }
+    if (trace.bloodTests) {
+      trace.bloodTests.forEach(t => {
+        addNode(`test-${t.test_id}`, 'BloodTest', `${t.test_type}: ${t.result}`, t);
+        if (trace.donationEvent) addLink(`event-${trace.donationEvent.event_id}`, `test-${t.test_id}`, 'HAS_TEST');
+      });
+    }
+  } else if (normType === 'event' || normType === 'donationevent') {
+    const ev = await fetchFullEventDetails(numId);
+    if (!ev) {
+      const err = new Error(`Donation Event #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    centerEntity = ev;
+    addNode(`event-${ev.event_id}`, 'DonationEvent', `Event #${ev.event_id}`, ev);
+
+    if (ev.donor_id) {
+      const donor = await fetchFullDonorDetails(ev.donor_id);
+      if (donor) {
+        addNode(`donor-${donor.donor_id}`, 'Donor', donor.name, donor);
+        addLink(`donor-${donor.donor_id}`, `event-${ev.event_id}`, 'DONATES');
+      }
+    }
+    if (ev.bank_id) {
+      const bank = await fetchFullBankDetails(ev.bank_id);
+      if (bank) {
+        addNode(`bank-${bank.bank_id}`, 'BloodBank', bank.name, bank);
+        addLink(`event-${ev.event_id}`, `bank-${bank.bank_id}`, 'RECEIVED_AT');
+      }
+    }
+    if (ev.unit_id) {
+      const unit = await fetchFullUnitDetails(ev.unit_id);
+      if (unit) {
+        addNode(`unit-${unit.unit_id}`, 'BloodUnit', unit.unit_code || `Unit #${unit.unit_id}`, unit);
+        addLink(`event-${ev.event_id}`, `unit-${unit.unit_id}`, 'GENERATES');
+      }
+    }
+    const [tests] = await pool.query(
+      'SELECT test_id, event_id, test_type, tested_date, result FROM blood_test WHERE event_id = ?',
+      [ev.event_id]
+    );
+    for (const t of tests) {
+      addNode(`test-${t.test_id}`, 'BloodTest', `${t.test_type}: ${t.result}`, {
+        ...t,
+        tested_date: formatDate(t.tested_date)
+      });
+      addLink(`event-${ev.event_id}`, `test-${t.test_id}`, 'HAS_TEST');
+    }
+  } else if (normType === 'test' || normType === 'bloodtest') {
+    const [testRows] = await pool.query('SELECT * FROM blood_test WHERE test_id = ?', [numId]);
+    if (testRows.length === 0) {
+      const err = new Error(`Blood Test #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    const t = testRows[0];
+    centerEntity = { ...t, tested_date: formatDate(t.tested_date) };
+    addNode(`test-${t.test_id}`, 'BloodTest', `${t.test_type}: ${t.result}`, centerEntity);
+
+    if (t.event_id) {
+      const ev = await fetchFullEventDetails(t.event_id);
+      if (ev) {
+        addNode(`event-${ev.event_id}`, 'DonationEvent', `Event #${ev.event_id}`, ev);
+        addLink(`event-${ev.event_id}`, `test-${t.test_id}`, 'HAS_TEST');
+
+        if (ev.donor_id) {
+          const donor = await fetchFullDonorDetails(ev.donor_id);
+          if (donor) {
+            addNode(`donor-${donor.donor_id}`, 'Donor', donor.name, donor);
+            addLink(`donor-${donor.donor_id}`, `event-${ev.event_id}`, 'DONATES');
+          }
+        }
+        if (ev.unit_id) {
+          const unit = await fetchFullUnitDetails(ev.unit_id);
+          if (unit) {
+            addNode(`unit-${unit.unit_id}`, 'BloodUnit', unit.unit_code || `Unit #${unit.unit_id}`, unit);
+            addLink(`event-${ev.event_id}`, `unit-${unit.unit_id}`, 'GENERATES');
+          }
+        }
+      }
+    }
+  } else {
+    const err = new Error(`Unsupported entity type: ${type}`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (session) {
+    await session.close().catch(() => {});
+  }
+
+  return {
+    nodes,
+    links,
+    source: useNeo4j ? 'neo4j' : 'mysql',
+    centerEntity
+  };
+}
+
+/**
+ * Authoritative entity inspector data for bloom side panel.
+ */
+async function getNodeDetails(type, id) {
+  const normType = String(type).toLowerCase();
+  const numId = Number(id);
+  if (!numId || isNaN(numId)) {
+    const err = new Error(`Invalid ${type} ID`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (normType === 'donor') {
+    const donor = await fetchFullDonorDetails(numId);
+    if (!donor) {
+      const err = new Error(`Donor #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const [events] = await pool.query(`
+      SELECT de.event_id, de.bank_id, de.unit_id, de.event_date, de.event_time, de.notes,
+             bb.name AS bank_name, bb.city AS bank_city,
+             bu.unit_code, bu.status AS unit_status, bu.volume_ml,
+             COUNT(bt.test_id) AS test_count
+      FROM donation_event de
+      LEFT JOIN blood_bank bb ON bb.bank_id = de.bank_id
+      LEFT JOIN blood_unit bu ON bu.unit_id = de.unit_id
+      LEFT JOIN blood_test bt ON bt.event_id = de.event_id
+      WHERE de.donor_id = ?
+      GROUP BY de.event_id
+      ORDER BY de.event_date DESC
+    `, [numId]);
+
+    const history = events.map(e => ({
+      ...e,
+      event_date: formatDate(e.event_date),
+      event_time: formatTime(e.event_time)
+    }));
+
+    const [units] = await pool.query(`
+      SELECT bu.unit_id, bu.unit_code, bu.blood_group, bu.volume_ml,
+             bu.collected_date, bu.expiry_date, bu.status,
+             de.event_id, de.event_date, bb.name AS bank_name
+      FROM blood_unit bu
+      JOIN donation_event de ON de.unit_id = bu.unit_id
+      LEFT JOIN blood_bank bb ON bb.bank_id = bu.bank_id
+      WHERE de.donor_id = ?
+      ORDER BY bu.collected_date DESC
+    `, [numId]);
+
+    const formattedUnits = units.map(u => ({
+      ...u,
+      collected_date: formatDate(u.collected_date),
+      expiry_date: formatDate(u.expiry_date),
+      event_date: formatDate(u.event_date)
+    }));
+
+    return {
+      type: 'Donor',
+      data: donor,
+      donationHistory: history,
+      unitsGenerated: formattedUnits
+    };
+  } else if (normType === 'unit' || normType === 'bloodunit') {
+    const unit = await fetchFullUnitDetails(numId);
+    if (!unit) {
+      const err = new Error(`Blood Unit #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const [events] = await pool.query(`
+      SELECT de.event_id, de.donor_id, de.bank_id, de.event_date, de.event_time, de.notes,
+             bb.name AS bank_name, bb.city AS bank_city,
+             d.first_name, d.last_name, d.blood_group AS donor_blood_group
+      FROM donation_event de
+      LEFT JOIN blood_bank bb ON bb.bank_id = de.bank_id
+      LEFT JOIN donor d ON d.donor_id = de.donor_id
+      WHERE de.unit_id = ?
+    `, [numId]);
+
+    let eventInfo = null;
+    let donorInfo = null;
+    let tests = [];
+
+    if (events.length > 0) {
+      const ev = events[0];
+      eventInfo = {
+        event_id: ev.event_id,
+        event_date: formatDate(ev.event_date),
+        event_time: formatTime(ev.event_time),
+        bank_name: ev.bank_name,
+        bank_city: ev.bank_city,
+        notes: ev.notes
+      };
+      if (ev.donor_id) {
+        donorInfo = await fetchFullDonorDetails(ev.donor_id);
+      }
+      const [testRows] = await pool.query(
+        'SELECT test_id, test_type, tested_date, result FROM blood_test WHERE event_id = ?',
+        [ev.event_id]
+      );
+      tests = testRows.map(t => ({
+        ...t,
+        tested_date: formatDate(t.tested_date)
+      }));
+    }
+
+    return {
+      type: 'BloodUnit',
+      data: unit,
+      event: eventInfo,
+      donor: donorInfo,
+      tests
+    };
+  } else if (normType === 'bank' || normType === 'bloodbank') {
+    const bank = await fetchFullBankDetails(numId);
+    if (!bank) {
+      const err = new Error(`Blood Bank #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const [inventory] = await pool.query(`
+      SELECT blood_group, COUNT(*) as count, SUM(volume_ml) as total_volume
+      FROM blood_unit
+      WHERE bank_id = ? AND status = 'Available'
+      GROUP BY blood_group
+    `, [numId]);
+
+    const [events] = await pool.query(`
+      SELECT de.event_id, de.event_date, de.unit_id,
+             bu.unit_code, bu.blood_group,
+             CONCAT(d.first_name, ' ', d.last_name) AS donor_name
+      FROM donation_event de
+      LEFT JOIN blood_unit bu ON bu.unit_id = de.unit_id
+      LEFT JOIN donor d ON d.donor_id = de.donor_id
+      WHERE de.bank_id = ?
+      ORDER BY de.event_date DESC
+      LIMIT 6
+    `, [numId]);
+
+    return {
+      type: 'BloodBank',
+      data: bank,
+      inventory,
+      recentEvents: events.map(e => ({
+        ...e,
+        event_date: formatDate(e.event_date)
+      }))
+    };
+  } else if (normType === 'event' || normType === 'donationevent') {
+    const ev = await fetchFullEventDetails(numId);
+    if (!ev) {
+      const err = new Error(`Donation Event #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    let donorInfo = null;
+    if (ev.donor_id) {
+      donorInfo = await fetchFullDonorDetails(ev.donor_id);
+    }
+    const [testRows] = await pool.query(
+      'SELECT test_id, test_type, tested_date, result FROM blood_test WHERE event_id = ?',
+      [numId]
+    );
+    return {
+      type: 'DonationEvent',
+      data: ev,
+      donor: donorInfo,
+      tests: testRows.map(t => ({ ...t, tested_date: formatDate(t.tested_date) }))
+    };
+  } else if (normType === 'test' || normType === 'bloodtest') {
+    const [testRows] = await pool.query('SELECT * FROM blood_test WHERE test_id = ?', [numId]);
+    if (testRows.length === 0) {
+      const err = new Error(`Blood Test #${numId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    const t = testRows[0];
+    let ev = null;
+    let donor = null;
+    let unit = null;
+    if (t.event_id) {
+      ev = await fetchFullEventDetails(t.event_id);
+      if (ev && ev.donor_id) donor = await fetchFullDonorDetails(ev.donor_id);
+      if (ev && ev.unit_id) unit = await fetchFullUnitDetails(ev.unit_id);
+    }
+    return {
+      type: 'BloodTest',
+      data: { ...t, tested_date: formatDate(t.tested_date) },
+      event: ev,
+      donor,
+      unit
+    };
+  } else {
+    const err = new Error(`Unsupported entity type: ${type}`);
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
 module.exports = {
   syncGraph,
   getGraphStatus,
   traceByUnitId,
-  traceByDonorId
+  traceByDonorId,
+  expandNode,
+  getNodeDetails,
+  fetchFullDonorDetails,
+  fetchFullBankDetails,
+  fetchFullUnitDetails,
+  fetchFullEventDetails
 };

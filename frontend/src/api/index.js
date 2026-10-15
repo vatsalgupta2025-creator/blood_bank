@@ -101,6 +101,8 @@ export const getGraphStatus      = ()             => api.get('/graph/status');
 export const traceBloodUnit      = (id)           => api.get(`/graph/trace/unit/${id}`);
 export const traceDonor          = (id)            => api.get(`/graph/trace/donor/${id}`);
 export const syncGraph           = ()             => api.post('/graph/sync');
+export const expandGraphNode     = (type, id)     => api.get(`/graph/expand/${type}/${id}`);
+export const getGraphNodeDetails = (type, id)    => api.get(`/graph/details/${type}/${id}`);
 
 export default api;
 
