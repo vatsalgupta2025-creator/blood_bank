@@ -95,12 +95,11 @@ export default function DashboardPage() {
         {/* Background gradient */}
         <div className="dash-hero-bg" style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse 80% 60% at 70% 50%, rgba(139,0,0,0.22) 0%, transparent 70%), radial-gradient(ellipse 50% 80% at 20% 80%, rgba(90,0,0,0.15) 0%, transparent 60%), #0F0F12',
         }} />
         {/* Subtle grid */}
         <div style={{
-          position: 'absolute', inset: 0, opacity: 0.025,
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+          position: 'absolute', inset: 0, opacity: 0.04,
+          backgroundImage: 'linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }} />
 
@@ -114,7 +113,7 @@ export default function DashboardPage() {
               {/* Trust badge */}
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC143C', animation: 'pulse 2s infinite' }} />
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 500 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 500 }}>
                   Trusted Blood Management Platform
                 </span>
               </div>
@@ -123,7 +122,7 @@ export default function DashboardPage() {
                 fontSize: 'clamp(40px, 5vw, 72px)',
                 lineHeight: 1.05,
                 fontFamily: 'var(--font-display)',
-                color: '#F9F6F3',
+                color: 'var(--text-primary)',
                 margin: 0,
               }}>
                 Every Drop<br />
@@ -132,7 +131,7 @@ export default function DashboardPage() {
               </h1>
 
               <p style={{
-                fontSize: 17, color: 'rgba(255,255,255,0.55)',
+                fontSize: 17, color: 'var(--text-secondary)',
                 maxWidth: 480, lineHeight: 1.7, margin: 0,
               }}>
                 Connect donors, blood banks, healthcare teams, and patients through
@@ -155,7 +154,7 @@ export default function DashboardPage() {
                   onClick={() => navigate('/donors')}
                   style={{
                     padding: '14px 28px', background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.8)',
+                    border: '1px solid var(--border)', color: 'var(--text-primary)',
                     fontWeight: 500, borderRadius: 12, fontSize: 14, cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}
@@ -189,41 +188,41 @@ export default function DashboardPage() {
                 {/* Floating badges */}
                 <div style={{
                   position: 'absolute', top: -16, left: -16,
-                  background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)',
+                  background: 'var(--glass-bg)', backdropFilter: 'blur(16px)',
                   borderRadius: 16, padding: '12px 16px',
                   display: 'flex', alignItems: 'center', gap: 10,
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid var(--glass-border)',
                 }}>
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(220,20,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <BloodDropIcon className="w-4 h-4 text-[#DC143C]" />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>A+ Available</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>342 units ready</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>A+ Available</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>342 units ready</div>
                   </div>
                 </div>
 
                 <div style={{
                   position: 'absolute', bottom: -16, right: -16,
-                  background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)',
+                  background: 'var(--glass-bg)', backdropFilter: 'blur(16px)',
                   borderRadius: 16, padding: '12px 16px',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid var(--glass-border)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', animation: 'pulse 2s infinite' }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171' }}>O− Critical</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--crimson)' }}>O− Critical</span>
                   </div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Urgent need · 63 units</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Urgent need · 63 units</div>
                 </div>
 
                 <div style={{
                   position: 'absolute', top: '50%', right: -16, transform: 'translateY(-50%)',
-                  background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)',
+                  background: 'var(--glass-bg)', backdropFilter: 'blur(16px)',
                   borderRadius: 16, padding: '12px 16px',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid var(--glass-border)',
                 }}>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>24/7 Support</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'white', marginTop: 2 }}>Blood Emergency Line</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>24/7 Support</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>Blood Emergency Line</div>
                 </div>
               </div>
 
@@ -254,14 +253,14 @@ export default function DashboardPage() {
           ].map((stat, i) => (
             <div key={i} style={{
               textAlign: 'center', padding: '16px 12px',
-              borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+              borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
             }}>
               <div style={{
-                fontSize: 32, fontWeight: 700, color: '#F9F6F3',
+                fontSize: 32, fontWeight: 700, color: 'var(--text-primary)',
                 fontFamily: 'var(--font-display)',
               }}>{stat.value}</div>
               <div style={{
-                fontSize: 12, color: 'rgba(255,255,255,0.4)',
+                fontSize: 12, color: 'var(--text-muted)',
                 letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4,
               }}>{stat.label}</div>
             </div>
@@ -276,7 +275,7 @@ export default function DashboardPage() {
           {/* Blood Inventory Overview */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, color: '#F9F6F3', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Droplets size={20} color="#DC143C" /> Inventory Status
               </h2>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/blood-units')}>View All</button>
@@ -300,10 +299,10 @@ export default function DashboardPage() {
                         background: 'radial-gradient(circle, rgba(220,20,60,0.4) 0%, transparent 70%)',
                       }} />
                     )}
-                    <div style={{ fontSize: 24, fontWeight: 700, color: isLow ? '#F87171' : '#F9F6F3' }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: isLow ? 'var(--crimson)' : 'var(--text-primary)' }}>
                       {group}
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                       {count} Units
                     </div>
                   </div>
@@ -315,14 +314,14 @@ export default function DashboardPage() {
           {/* Urgent Blood Requests */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, color: '#F9F6F3', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertTriangle size={20} color="#F59E0B" /> Urgent Requests
               </h2>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/blood-requests')}>View All</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {requests.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.02)', borderRadius: 16 }}>
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
                   No urgent requests pending.
                 </div>
               ) : requests.map(req => (
@@ -334,8 +333,8 @@ export default function DashboardPage() {
                   justifyContent: 'space-between'
                 }}>
                   <div>
-                    <div style={{ fontWeight: 600, color: '#F9F6F3', fontSize: 15 }}>{req.receiver_name}</div>
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 15 }}>{req.receiver_name}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                       Required by {formatDate(req.required_by)} at {req.bank_name}
                     </div>
                   </div>
@@ -355,14 +354,14 @@ export default function DashboardPage() {
           {/* Recent Activity */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, color: '#F9F6F3', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CalendarHeart size={20} color="#10B981" /> Recent Activity
               </h2>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/donation-events')}>View All</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {events.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.02)', borderRadius: 16 }}>
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
                   No recent activities recorded.
                 </div>
               ) : events.map(evt => (
@@ -377,10 +376,10 @@ export default function DashboardPage() {
                     <Droplets size={18} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, color: '#F9F6F3' }}>
+                    <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                       <strong style={{ fontWeight: 600 }}>{evt.donor_name}</strong> donated blood.
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                       {formatDate(evt.event_date)} at {evt.bank_name}
                     </div>
                   </div>
@@ -393,7 +392,7 @@ export default function DashboardPage() {
           {/* Connected Blood Banks */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, color: '#F9F6F3', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Building2 size={20} color="#3B82F6" /> Connected Banks
               </h2>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/blood-banks')}>View All</button>
@@ -407,13 +406,13 @@ export default function DashboardPage() {
                   flexDirection: 'column',
                   gap: 8
                 }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#F9F6F3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {bank.name}
                   </h3>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                     {bank.city}, {bank.state}
                   </div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                     Capacity: {bank.capacity} units
                   </div>
                 </div>
@@ -439,12 +438,12 @@ export default function DashboardPage() {
             <h2 style={{
               fontSize: 'clamp(28px, 3vw, 44px)',
               fontFamily: 'var(--font-display)',
-              color: '#F9F6F3', margin: '0 0 12px 0',
+              color: 'var(--text-primary)', margin: '0 0 12px 0',
             }}>
               System Modules
             </h2>
             <p style={{
-              fontSize: 15, color: 'rgba(255,255,255,0.4)', margin: 0, maxWidth: 500, marginLeft: 'auto', marginRight: 'auto',
+              fontSize: 15, color: 'var(--text-muted)', margin: 0, maxWidth: 500, marginLeft: 'auto', marginRight: 'auto',
             }}>
               Access all blood bank management functions from one place
             </p>
@@ -463,21 +462,8 @@ export default function DashboardPage() {
                     borderRadius: 20,
                     padding: 28,
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
                     position: 'relative',
                     overflow: 'hidden',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                    e.currentTarget.style.borderColor = `${mod.color}33`;
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = `0 12px 40px ${mod.color}15`;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   {/* Subtle corner glow */}
@@ -499,12 +485,12 @@ export default function DashboardPage() {
 
                   <h3 style={{
                     margin: '0 0 8px 0', fontSize: 17, fontWeight: 600,
-                    color: '#F9F6F3',
+                    color: 'var(--text-primary)',
                   }}>{mod.label}</h3>
 
                   <p style={{
                     margin: '0 0 16px 0', fontSize: 13,
-                    color: 'rgba(255,255,255,0.4)', lineHeight: 1.5,
+                    color: 'var(--text-muted)', lineHeight: 1.5,
                   }}>{mod.desc}</p>
 
                   <div style={{

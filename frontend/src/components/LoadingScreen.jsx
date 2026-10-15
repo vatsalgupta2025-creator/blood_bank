@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Moon, Sun, ArrowRight, Droplet, Heart, Activity } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import '../landing.css';
 
 const particles = [
@@ -44,6 +44,12 @@ export default function LoadingScreen({ onDone }) {
       if (onDone) onDone();
     }, 450);
   };
+
+  // Auto-redirect after 7 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => handleEnter(), 7000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // ── Canvas / WebGL Animation Engine ──
   useEffect(() => {
@@ -862,15 +868,6 @@ export default function LoadingScreen({ onDone }) {
           >
             {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          
-          <button
-            className="btn-enter-app"
-            style={{ padding: '10px 20px', fontSize: 13 }}
-            onClick={handleEnter}
-          >
-            Enter System
-            <ArrowRight size={15} />
-          </button>
         </div>
       </header>
 
@@ -891,28 +888,9 @@ export default function LoadingScreen({ onDone }) {
           <p>Give blood. Keep life moving.</p>
 
           <div className="landing-stats-row">
-            <span className="stat-pill">
-              <Heart size={14} color="#DC143C" />
-              1 Donation = 3 Lives Saved
-            </span>
-            <span className="stat-pill">
-              <Activity size={14} color="#DC143C" />
-              450ml Life Transfusion
-            </span>
-            <span className="stat-pill">
-              <Droplet size={14} color="#DC143C" />
-              Real-Time Inventory Network
-            </span>
-          </div>
-
-          <div className="landing-cta-group">
-            <button className="btn-enter-app" onClick={handleEnter}>
-              Explore Dashboard
-              <ArrowRight size={16} />
-            </button>
-            <button className="btn-donate-quick" onClick={handleEnter}>
-              Book Blood Donation
-            </button>
+            <span className="stat-pill">🩸 1 Donation = 3 Lives Saved</span>
+            <span className="stat-pill">💉 450ml Life Transfusion</span>
+            <span className="stat-pill">🏥 Real-Time Inventory Network</span>
           </div>
         </div>
 
