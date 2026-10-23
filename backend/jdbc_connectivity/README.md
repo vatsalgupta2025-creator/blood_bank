@@ -3,7 +3,7 @@
 
 > **Academic Submission Component**  
 > **Course:** Database Management Systems (DBMS)  
-> **Module Path:** `jdbc-demo/src/main/java/com/bloodbank/DBConnection.java`  
+> **Module Path:** `backend/jdbc_connectivity/src/main/java/com/bloodbank/DBConnection.java`  
 > **Target Database:** MySQL (`blood_bank_db` on port `3306`)
 
 ---
@@ -130,16 +130,16 @@ export DB_PASSWORD="your_mysql_password"
 
 ### Method A: One-Click Runner Scripts (Recommended)
 
-From the project root or the `jdbc-demo` directory:
+From the project root or the `backend/jdbc_connectivity` directory:
 
 **Windows PowerShell:**
 ```powershell
-powershell -ExecutionPolicy Bypass -File jdbc-demo/run-demo.ps1
+powershell -ExecutionPolicy Bypass -File backend/jdbc_connectivity/run-demo.ps1
 ```
 
 **Windows Command Prompt:**
 ```cmd
-jdbc-demo\run-demo.bat
+backend/jdbc_connectivity\run-demo.bat
 ```
 
 ---
@@ -150,17 +150,17 @@ Ensure your terminal is in the project root:
 
 1. **Compile:**
    ```bash
-   javac -encoding UTF-8 -cp "jdbc-demo/lib/mysql-connector-j-8.0.33.jar" jdbc-demo/src/main/java/com/bloodbank/DBConnection.java
+   javac -encoding UTF-8 -cp "backend/jdbc_connectivity/lib/mysql-connector-j-8.0.33.jar" backend/jdbc_connectivity/src/main/java/com/bloodbank/DBConnection.java
    ```
 
 2. **Execute (Windows):**
    ```bash
-   java -cp "jdbc-demo/src/main/java;jdbc-demo/lib/mysql-connector-j-8.0.33.jar" com.bloodbank.DBConnection
+   java -cp "backend/jdbc_connectivity/src/main/java;backend/jdbc_connectivity/lib/mysql-connector-j-8.0.33.jar" com.bloodbank.DBConnection
    ```
 
    **Execute (Linux/macOS):**
    ```bash
-   java -cp "jdbc-demo/src/main/java:jdbc-demo/lib/mysql-connector-j-8.0.33.jar" com.bloodbank.DBConnection
+   java -cp "backend/jdbc_connectivity/src/main/java:backend/jdbc_connectivity/lib/mysql-connector-j-8.0.33.jar" com.bloodbank.DBConnection
    ```
 
 ---
@@ -170,7 +170,7 @@ Ensure your terminal is in the project root:
 If Apache Maven (`mvn`) is installed on the machine:
 
 ```bash
-cd jdbc-demo
+cd backend/jdbc_connectivity
 mvn compile exec:java
 ```
 
