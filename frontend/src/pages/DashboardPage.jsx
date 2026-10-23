@@ -6,7 +6,7 @@ import {
 import { getDashboardSummary, getBloodRequests, getDonationEvents, getBloodBanks } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { BloodGroupBadge, UrgencyBadge, formatDate } from '../components/Badges';
-import JdbcDemoSection from '../components/JdbcDemoSection';
+import JdbcSection from '../components/JdbcSection';
 
 function BloodDropIcon({ className = "" }) {
   return (
@@ -507,7 +507,7 @@ export default function DashboardPage() {
 
           {/* Academic Showcase: JDBC Database Connectivity Demonstration */}
           <div style={{ marginTop: 48 }}>
-            <JdbcDemoSection defaultExpanded={false} />
+            <JdbcSection defaultExpanded={false} />
           </div>
         </div>
       </section>

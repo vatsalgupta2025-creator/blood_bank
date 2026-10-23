@@ -13,7 +13,7 @@ import {
   Layers,
   Code
 } from 'lucide-react';
-import { getJdbcDemoInfo, getJdbcDemoSource } from '../api';
+import { getJdbcInfo, getJdbcSource } from '../api';
 
 const DEFAULT_JAVA_SOURCE = `package com.bloodbank;
 
@@ -103,7 +103,7 @@ public class DBConnection {
     }
 }`;
 
-export default function JdbcDemoSection({ defaultExpanded = false }) {
+export default function JdbcSection({ defaultExpanded = false }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [sourceCode, setSourceCode] = useState(DEFAULT_JAVA_SOURCE);
   const [copied, setCopied] = useState(false);
@@ -112,13 +112,13 @@ export default function JdbcDemoSection({ defaultExpanded = false }) {
 
   useEffect(() => {
     // Attempt to fetch live source code and metadata from backend API
-    getJdbcDemoInfo()
+    getJdbcInfo()
       .then(res => {
         if (res?.data) setApiInfo(res.data);
       })
       .catch(() => {});
 
-    getJdbcDemoSource()
+    getJdbcSource()
       .then(res => {
         if (res?.sourceCode) setSourceCode(res.sourceCode);
       })

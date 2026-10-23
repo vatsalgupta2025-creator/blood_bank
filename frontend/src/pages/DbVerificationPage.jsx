@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { verifyDbRecord } from '../api';
 import { ShieldCheck, Search, AlertTriangle, CheckCircle, RotateCcw, Info, Code2 } from 'lucide-react';
-import JdbcDemoSection from '../components/JdbcDemoSection';
+import JdbcSection from '../components/JdbcSection';
 
 const ENTITY_OPTIONS = [
   { value: 'donor',          label: 'Donor',           pk: 'donor_id' },
@@ -393,7 +393,7 @@ export default function DbVerificationPage() {
 
       {/* JDBC Database Connectivity Demonstration Section */}
       <div id="jdbc-demo-section">
-        <JdbcDemoSection defaultExpanded={true} />
+        <JdbcSection defaultExpanded={true} />
       </div>
     </div>
   );

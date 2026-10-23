@@ -104,9 +104,9 @@ export const syncGraph           = ()             => api.post('/graph/sync');
 export const expandGraphNode     = (type, id)     => api.get(`/graph/expand/${type}/${id}`);
 export const getGraphNodeDetails = (type, id)    => api.get(`/graph/details/${type}/${id}`);
 
-// JDBC Demonstration
-export const getJdbcDemoInfo     = ()             => api.get('/jdbc-demo/info');
-export const getJdbcDemoSource   = ()             => api.get('/jdbc-demo/source');
+// JDBC Connectivity
+export const getJdbcInfo         = ()             => api.get('/jdbc/info');
+export const getJdbcSource       = ()             => api.get('/jdbc/source');
 
 export default api;
 
