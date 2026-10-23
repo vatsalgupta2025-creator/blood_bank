@@ -52,6 +52,7 @@ app.use('/api/blood-requests',   require('./routes/bloodRequestRoutes'));
 app.use('/api/sql',              require('./routes/sqlRoutes'));
 app.use('/api/db-verification', require('./routes/dbVerificationRoutes'));
 app.use('/api/graph',           require('./routes/graphRoutes'));
+app.use('/api/jdbc-demo',       require('./routes/jdbcDemoRoutes'));
 
 // ── 404 handler ───────────────────────────────────────────────
 app.use((req, res) => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { verifyDbRecord } from '../api';
-import { ShieldCheck, Search, AlertTriangle, CheckCircle, RotateCcw, Database, Info } from 'lucide-react';
+import { ShieldCheck, Search, AlertTriangle, CheckCircle, RotateCcw, Info, Code2 } from 'lucide-react';
+import JdbcDemoSection from '../components/JdbcDemoSection';
 
 const ENTITY_OPTIONS = [
   { value: 'donor',          label: 'Donor',           pk: 'donor_id' },
@@ -95,16 +96,43 @@ export default function DbVerificationPage() {
         flexDirection: 'column',
         gap: 20
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <ShieldCheck size={22} color="#DC143C" />
-          <div>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-              Live MySQL Database Verification
-            </h2>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
-              Directly query MySQL table records to verify CRUD operation persistence.
-            </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ShieldCheck size={22} color="#DC143C" />
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                Live MySQL Database Verification
+              </h2>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                Directly query MySQL table records to verify CRUD operation persistence.
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.getElementById('jdbc-demo-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 16px',
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'white',
+              background: 'linear-gradient(135deg, #DC143C, #8B0000)',
+              border: 'none',
+              borderRadius: 10,
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(220, 20, 60, 0.3)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Code2 size={16} />
+            View JDBC Implementation
+          </button>
         </div>
 
         <form onSubmit={handleVerify} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, alignItems: 'end' }}>
@@ -361,6 +389,11 @@ export default function DbVerificationPage() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* JDBC Database Connectivity Demonstration Section */}
+      <div id="jdbc-demo-section">
+        <JdbcDemoSection defaultExpanded={true} />
       </div>
     </div>
   );
