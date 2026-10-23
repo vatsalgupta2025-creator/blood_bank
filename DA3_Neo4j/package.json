@@ -1,0 +1,28 @@
+{
+  "name": "da3-neo4j",
+  "version": "1.0.0",
+  "description": "DA3 – Neo4j Graph Integration for LifeFlow Blood Bank Management System",
+  "main": "index.js",
+  "scripts": {
+    "diagnose": "node scripts/diagnose_neo4j.js",
+    "verify": "node scripts/verify_connectivity.js",
+    "test:integration": "node scripts/test_neo4j_integration.js",
+    "test:graph": "node scripts/test_graph_endpoints.js",
+    "test:feature3": "node scripts/test_feature3.js",
+    "test:sync-meta": "node scripts/test_sync_metadata_persistence.js"
+  },
+  "keywords": ["neo4j", "graph", "blood-bank", "DBMS"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.20.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.3",
+    "neo4j-driver": "^6.2.0"
+  }
+}
